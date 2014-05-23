@@ -9,6 +9,7 @@ import curses
 import subprocess
 import shlex
 from subprocess import call
+from html import unescape
 #from time import gmtime, strftime
 from urllib.parse import quote
 from urllib.request import urlopen
@@ -17,16 +18,18 @@ from curses import wrapper
 
 live = 1
 position = 0
-results_max = 20
-subreddit = "videos"
+results_max = 25
 title_width = 46
 template = "{0:2} {1:5} {2:%s} {3:20}" % title_width
 process = None
 
-def load_subreddit():
+def load_subreddit(subreddit, search=""):
 	global children
 	if live == 1:
-		url = "http://www.reddit.com/r/" + subreddit + ".json"
+		if search == "":
+			url = "http://www.reddit.com/r/" + subreddit + ".json"
+		else:
+			url = "http://www.reddit.com/r/" + subreddit + "/search.json?q=" + urllib.parse.quote(search) + "&restrict_sr=on"
 		header = { 'User-Agent' : 'cool json bot' }
 		request = urllib.request.Request(url, headers=header)
 		response = urllib.request.urlopen(request)
@@ -45,7 +48,7 @@ def draw_menu(menu):
 
 	i = 0
 	for item in children:
-		title = item['data']['title'][:title_width]
+		title = unescape(item['data']['title'][:title_width])
 		url = item['data']['url']
 		ups = str(item['data']['ups'])
 		domain = item['data']['domain']
@@ -75,8 +78,9 @@ def handle_selection(menu):
 			process = subprocess.Popen(args)
 
 def main(stdscr):
-	global position, subreddit
+	global position
 
+	subreddit = "videos"
 	screen = curses.initscr()
 	curses.curs_set(0)
 
@@ -97,22 +101,39 @@ def main(stdscr):
 			handle_selection(menu_status)
 		elif c == ord('q'):
 			break
-		elif c == ord('g'):
+		elif c == ord('/'):
+
+			# get input
+			curses.echo()
+			curses.curs_set(1)
+			text = "search /r/" + subreddit + ": "
+			menu_status.addstr(0, 0, text)
+			menu_status.refresh()
+			search = menu_status.getstr(0, len(text), 50).decode('utf-8')
+			curses.noecho()
+			curses.curs_set(0)
+
+			# load new subreddit
+			if search != "":
+				position = 0
+				load_subreddit(subreddit, search)
+				menu_status.clear()
+				draw_menu(menu_results)
+		elif c == ord('s'):
 
 			# get input
 			curses.echo()
 			curses.curs_set(1)
 			menu_status.addstr(0, 0, "subreddit: ")
 			menu_status.refresh()
-			new_subreddit = menu_status.getstr(0, 11, 50).decode('utf-8')
+			subreddit = menu_status.getstr(0, 11, 50).decode('utf-8')
 			curses.noecho()
 			curses.curs_set(0)
 
 			# load new subreddit
-			if new_subreddit != "":
-				subreddit = new_subreddit
+			if subreddit != "":
 				position = 0
-				load_subreddit()
+				load_subreddit(subreddit)
 				menu_status.clear()
 				draw_menu(menu_results)
 		elif c == curses.KEY_UP or c == ord('k'):
@@ -134,5 +155,5 @@ def main(stdscr):
 
 	curses.endwin()
 
-load_subreddit()
+load_subreddit("videos")
 wrapper(main)
