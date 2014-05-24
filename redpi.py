@@ -125,6 +125,7 @@ def handle_selection(menu):
 			command = "omxplayer " + shlex.quote(files[position])
 			args = shlex.split(command)
 			process = subprocess.Popen(args)
+			process.wait()
 
 def main(stdscr):
 	global position, mode
