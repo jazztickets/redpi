@@ -38,7 +38,13 @@ def load_subreddit(subreddit, search=""):
 			url = "http://www.reddit.com/r/" + subreddit + "/search.json?q=" + urllib.parse.quote(search) + "&restrict_sr=on"
 		header = { 'User-Agent' : 'cool json bot' }
 		request = urllib.request.Request(url, headers=header)
-		response = urllib.request.urlopen(request)
+		try:
+			response = urllib.request.urlopen(request)
+		except:
+			children = [] 
+			results_count = 0
+			return
+
 		json_str = response.readall().decode("utf-8")
 		decoded = json.loads(json_str)
 		#print(json.dumps(decoded, sort_keys=True, indent=2))
@@ -124,8 +130,13 @@ def handle_selection(menu):
 		if len(files) > 0:
 			command = "omxplayer " + shlex.quote(files[position])
 			args = shlex.split(command)
-			process = subprocess.Popen(args)
-			process.wait()
+			try:
+				play_process = subprocess.Popen(args)
+				play_process.wait()
+			except:
+				return 1
+
+	return 0
 
 def main(stdscr):
 	global position, mode
@@ -148,7 +159,11 @@ def main(stdscr):
 	while True:
 		c = screen.getch()
 		if c == 10:
-			handle_selection(menu_status)
+			status = handle_selection(menu_status)
+			if status == 1:
+				menu_status.addstr(0, 0, "Playback failed")
+				menu_status.refresh()
+
 		elif c == ord('q'):
 			break
 		elif c == ord('l'):
