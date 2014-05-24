@@ -51,7 +51,11 @@ def load_subreddit(subreddit, search=""):
 	results_count = len(children)
 
 def draw_results(menu):
-	menu.clear()
+
+	if len(children) == 0:
+		menu.addstr(0, 0, "No results")
+		menu.refresh()
+		return
 
 	i = 0
 	title_width = 46
@@ -76,13 +80,17 @@ def draw_results(menu):
 
 def draw_downloads(menu):
 	global results_count
-	menu.clear()
 
 	i = 0
 	title_width = 70
 	template = "{0:2} {1:%s}" % title_width
 
 	files = os.listdir(files_path)
+	if len(files) == 0:
+		menu.addstr(0, 0, "No results")
+		menu.refresh()
+		return
+
 	for file in files:
 		row = [str(i+1), file[:title_width]]
 		color = 1
@@ -107,14 +115,16 @@ def handle_selection(menu):
 				menu.addstr(1, 0, "downloading: " + item['url'])
 				menu.refresh()
 				os.chdir(files_path)
-				command = "youtube-dl -q " + item['url']
+				command = "youtube-dl -q " + shlex.quote(item['url'])
 				args = shlex.split(command)
 				process = subprocess.Popen(args)
 	else:
 		os.chdir(files_path)
-		#command = "youtube-dl -q " + item['url']
-		#args = shlex.split(command)
-		#process = subprocess.Popen(args)
+		files = os.listdir(files_path)
+		if len(files) > 0:
+			command = "omxplayer " + shlex.quote(files[position])
+			args = shlex.split(command)
+			process = subprocess.Popen(args)
 
 def main(stdscr):
 	global position, mode
@@ -142,6 +152,7 @@ def main(stdscr):
 			break
 		elif c == ord('l'):
 			mode = 1
+			menu_results.clear()
 			position = 0
 		elif c == ord('/'):
 			mode = 0
@@ -160,6 +171,7 @@ def main(stdscr):
 			if search != "":
 				position = 0
 				load_subreddit(subreddit, search)
+				menu_results.clear()
 				menu_status.clear()
 		elif c == ord('s'):
 			mode = 0
@@ -177,6 +189,7 @@ def main(stdscr):
 			if subreddit != "":
 				position = 0
 				load_subreddit(subreddit)
+				menu_results.clear()
 				menu_status.clear()
 		elif c == curses.KEY_UP or c == ord('k'):
 			position -= 1
