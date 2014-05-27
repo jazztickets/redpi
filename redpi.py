@@ -9,8 +9,8 @@ import curses
 import subprocess
 import shlex
 import os
+import html.parser
 from subprocess import call
-from html import unescape
 #from time import gmtime, strftime
 from urllib.parse import quote
 from urllib.request import urlopen
@@ -28,6 +28,7 @@ results_max = 20
 results_count = 0
 process = None
 mode = 0
+html_parser = html.parser.HTMLParser()
 
 def load_subreddit(subreddit, search=""):
 	global children, results_count
@@ -67,7 +68,7 @@ def draw_results(menu):
 	title_width = 46
 	template = "{0:2} {1:5} {2:%s} {3:20}" % title_width
 	for item in children:
-		title = unescape(item['data']['title'][:title_width])
+		title = html_parser.unescape(item['data']['title'][:title_width])
 		url = item['data']['url']
 		ups = str(item['data']['ups'])
 		domain = item['data']['domain'][:20]
