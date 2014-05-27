@@ -122,14 +122,14 @@ def handle_selection(menu):
 				menu.addstr(1, 0, "downloading: " + item['url'])
 				menu.refresh()
 				os.chdir(files_path)
-				command = "youtube-dl -q " + shlex.quote(item['url'])
+				command = "youtube-dl -q --restrict-filenames " + item['url']
 				args = shlex.split(command)
 				process = subprocess.Popen(args)
 	else:
 		os.chdir(files_path)
 		files = os.listdir(files_path)
 		if len(files) > 0:
-			command = "omxplayer " + shlex.quote(files[position])
+			command = "omxplayer " + files[position]
 			args = shlex.split(command)
 			try:
 				play_process = subprocess.Popen(args)
