@@ -10,17 +10,16 @@ import subprocess
 import shlex
 import os
 import html.parser
-from subprocess import call
-#from time import gmtime, strftime
 from urllib.parse import quote
 from urllib.request import urlopen
-#from curses import panel
-from curses import wrapper
 
 # create cache directory
 files_path = os.path.expanduser("~/.cache/redpi/files")
 cache_path = os.path.expanduser("~/.cache/redpi/")
 os.makedirs(files_path, exist_ok=True)
+
+play_command = "omxplayer"
+#play_command = "vlc -q"
 
 live = 1
 position = 0
@@ -28,6 +27,8 @@ results_max = 20
 results_count = 0
 process = None
 mode = 0
+max_y = 0
+max_x = 0
 html_parser = html.parser.HTMLParser()
 
 def load_subreddit(subreddit, search=""):
@@ -61,7 +62,7 @@ def draw_results(menu):
 
 	if len(children) == 0:
 		menu.addstr(0, 0, "No results")
-		menu.refresh()
+		menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 		return
 
 	i = 0
@@ -74,7 +75,6 @@ def draw_results(menu):
 		domain = item['data']['domain'][:20]
 		media = item['data']['media']
 		row = [str(i+1), ups, title, domain]
-		#print(template.format(*row))
 		color = 1
 		if position == i:
 			color = 2
@@ -83,7 +83,7 @@ def draw_results(menu):
 		if i >= results_max:
 			break
 
-	menu.refresh()
+	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
 def draw_downloads(menu):
 	global results_count
@@ -95,7 +95,7 @@ def draw_downloads(menu):
 	files = os.listdir(files_path)
 	if len(files) == 0:
 		menu.addstr(0, 0, "No results")
-		menu.refresh()
+		menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 		return
 
 	for file in files:
@@ -109,18 +109,18 @@ def draw_downloads(menu):
 			break
 
 	results_count = i
-	menu.refresh()
+	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
 def handle_selection(menu):
-	global children, process
+	global children, process, play_command
 
 	if mode == 0:
 		item = children[position]['data']
 		if item['media'] != None:
 			media = item['media']['oembed']
 			if media['type'] == "video":
-				menu.addstr(1, 0, "downloading: " + item['url'])
-				menu.refresh()
+				menu.addstr(0, 0, "downloading: " + item['url'])
+				menu.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
 				os.chdir(files_path)
 				command = "youtube-dl -q --restrict-filenames " + item['url']
 				args = shlex.split(command)
@@ -129,7 +129,7 @@ def handle_selection(menu):
 		os.chdir(files_path)
 		files = os.listdir(files_path)
 		if len(files) > 0:
-			command = "omxplayer " + files[position]
+			command = play_command + " " + files[position]
 			args = shlex.split(command)
 			try:
 				play_process = subprocess.Popen(args)
@@ -140,37 +140,40 @@ def handle_selection(menu):
 	return 0
 
 def main(stdscr):
-	global position, mode
+	global position, mode, max_x, max_y
 
 	subreddit = "videos"
 	screen = curses.initscr()
+	curses.halfdelay(10)
 	curses.curs_set(0)
 
+	(max_y, max_x) = screen.getmaxyx()
 	curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
 	curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)
 	
-	menu_results = curses.newwin(100, 200, 0, 0)
-	menu_status = curses.newwin(3, 200, results_max + 1, 0)
+	menu_results = curses.newpad(100, 300)
+	menu_status = curses.newpad(1, 300)
 	draw_results(menu_results)
-
-	#panel = curses.panel.new_panel(menu)
-	#panel.top()
-	#panel.show()
+	curses.doupdate()
 
 	while True:
 		c = screen.getch()
-		if c == 10:
+		redraw = 0
+		if c == curses.KEY_RESIZE:
+			(max_y, max_x) = screen.getmaxyx()
+			redraw = 1
+		elif c == 10:
 			status = handle_selection(menu_status)
 			if status == 1:
 				menu_status.addstr(0, 0, "Playback failed")
-				menu_status.refresh()
-
+				menu_status.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
 		elif c == ord('q'):
 			break
 		elif c == ord('l'):
 			mode = 1
 			menu_results.clear()
 			position = 0
+			redraw = 1
 		elif c == ord('/'):
 			mode = 0
 
@@ -178,27 +181,26 @@ def main(stdscr):
 			curses.echo()
 			curses.curs_set(1)
 			text = "search /r/" + subreddit + ": "
-			menu_status.addstr(0, 0, text)
-			menu_status.refresh()
-			search = menu_status.getstr(0, len(text), 50).decode('utf-8')
+			screen.addstr(max_y-2, 0, text)
+			search = screen.getstr(max_y-2, len(text), 50).decode('utf-8')
 			curses.noecho()
 			curses.curs_set(0)
 
-			# load new subreddit
+			# load results
 			if search != "":
 				position = 0
 				load_subreddit(subreddit, search)
 				menu_results.clear()
-				menu_status.clear()
+				redraw = 1
 		elif c == ord('s'):
 			mode = 0
 
 			# get input
 			curses.echo()
 			curses.curs_set(1)
-			menu_status.addstr(0, 0, "subreddit: ")
-			menu_status.refresh()
-			subreddit = menu_status.getstr(0, 11, 50).decode('utf-8')
+			text = "subreddit: "
+			screen.addstr(max_y-2, 0, text)
+			subreddit = screen.getstr(max_y-2, len(text)).decode('utf-8')
 			curses.noecho()
 			curses.curs_set(0)
 
@@ -207,28 +209,33 @@ def main(stdscr):
 				position = 0
 				load_subreddit(subreddit)
 				menu_results.clear()
-				menu_status.clear()
+				redraw = 1
 		elif c == curses.KEY_UP or c == ord('k'):
 			position -= 1
 			if position < 0:
 				position = 0
+			redraw = 1
 		elif c == curses.KEY_DOWN or c == ord('j'):
 			position += 1
 			if position > results_count - 1:
 				position = results_count - 1
+			redraw = 1
 
-		if mode == 0:
-			draw_results(menu_results)
-		else:
-			draw_downloads(menu_results)
+		if redraw:
+			if mode == 0:
+				draw_results(menu_results)
+			else:
+				draw_downloads(menu_results)
 
 		if process != None:
 			if process.poll() == 0:
 				menu_status.clear()
-				menu_status.addstr(1, 0, "done")
-				menu_status.refresh()
+				menu_status.addstr(0, 0, "done")
+				menu_status.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
+
+		curses.doupdate()
 
 	curses.endwin()
 
 load_subreddit("videos")
-wrapper(main)
+curses.wrapper(main)
