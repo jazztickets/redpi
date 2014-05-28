@@ -19,8 +19,8 @@ cache_path = os.path.expanduser("~/.cache/redpi/")
 os.makedirs(files_path, exist_ok=True)
 
 mode_help = [
-	"r: refresh, s: subreddit, y: youtube, l: downloads, j: up, k: down, enter: download",
-	"r: refresh, s: subreddit, y: youtube, l: results, a: playall, d: delete, j: up, k: down, enter: play"
+	"q: quit r: refresh s: subreddit y: youtube l: downloads j: up k: down enter: download",
+	"q: quit r: refresh s: subreddit y: youtube l: results a: playall d: delete j: up k: down enter: play"
 ]
 
 play_command = "omxplayer"
