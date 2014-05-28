@@ -20,14 +20,14 @@ os.makedirs(files_path, exist_ok=True)
 
 mode_help = [
 	"r: refresh, s: subreddit, y: youtube, l: downloads, j: up, k: down, enter: download",
-	"r: refresh, s: subreddit, y: youtube, l: results, d: delete, j: up, k: down, enter: play"
+	"r: refresh, s: subreddit, y: youtube, l: results, a: playall, d: delete, j: up, k: down, enter: play"
 ]
 
 play_command = "omxplayer"
 #play_command = "vlc -q"
 
 position = 0
-expire_time = 300
+expire_time = 600
 results = []
 max_display = 20
 process = None
@@ -173,6 +173,21 @@ def draw_help(menu):
 	menu.addstr(0, 0, mode_help[mode][:max_x-1], curses.A_BOLD)
 	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
+def play_video(file):
+	set_status("Playing " + file)
+	os.chdir(files_path)
+	command = play_command + " " + file
+	args = shlex.split(command)
+	try:
+		play_process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+		play_process.wait()
+		set_status("Finished " + file)
+	except:
+		set_status("Playback failed")
+		return 1
+	
+	return 0
+
 def handle_selection():
 	global process
 
@@ -189,13 +204,27 @@ def handle_selection():
 			args = shlex.split(command)
 			process = subprocess.Popen(args)
 		else:
-			os.chdir(files_path)
-			command = play_command + " " + video
-			args = shlex.split(command)
-			try:
-				play_process = subprocess.Popen(args)
-				play_process.wait()
-			except:
+			return play_video(video)
+
+	return 0
+
+def handle_playall(screen):
+	global process
+
+	if len(results) == 0:
+		return
+
+	index = position + scroll
+	for item in results[index:]:
+		if 'video' in item:
+			video = item['video']
+			status = play_video(video)
+			c = screen.getch()
+			if c == 27:
+				set_status("Cancelled playlist")
+				return 1
+
+			if status == 1:
 				return 1
 
 	return 0
@@ -212,10 +241,11 @@ def delete_selection():
 	return 0
 
 def set_status(text):
-	global menu_status, max_y, max_x
+	global menu_status
 	menu_status.clear()
-	menu_status.addstr(0, 0, text, curses.A_BOLD)
+	menu_status.addstr(0, 0, text[:max_x], curses.A_BOLD)
 	menu_status.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
+	curses.doupdate()
 
 def get_input(text, screen):
 	curses.echo()
@@ -255,8 +285,8 @@ def main(stdscr):
 			redraw = 1
 		elif c == 10:
 			status = handle_selection()
-			if status == 1:
-				set_status("Playback failed")
+		elif c == ord('a'):
+			handle_playall(screen)
 		elif c == ord('q'):
 			break
 		elif c == ord('d'):
