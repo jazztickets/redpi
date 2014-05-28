@@ -23,16 +23,17 @@ play_command = "omxplayer"
 
 position = 0
 expire_time = 300
-results_max = 20
-results_count = 0
+results = []
+max_display = 20
 process = None
+scroll = 0
 mode = 0
 max_y = 0
 max_x = 0
 html_parser = html.parser.HTMLParser()
 
 def load_subreddit(subreddit, search="", force=0):
-	global children, results_count, expired_time
+	global expired_time, results
 	cache_file = cache_path + subreddit + ".json"
 
 	# load cached results
@@ -42,9 +43,9 @@ def load_subreddit(subreddit, search="", force=0):
 			with open(cache_file, "r") as file_in:
 				decoded = json.load(file_in)
 		else:
-			url = "http://www.reddit.com/r/" + subreddit + ".json"
+			url = "http://www.reddit.com/r/" + subreddit + ".json?limit=100"
 	else:
-		url = "http://www.reddit.com/r/" + subreddit + "/search.json?q=" + urllib.parse.quote(search) + "&restrict_sr=on"
+		url = "http://www.reddit.com/r/" + subreddit + "/search.json?limit=100&q=" + urllib.parse.quote(search) + "&restrict_sr=on"
 	
 	# load live page
 	if decoded == "": 
@@ -54,30 +55,21 @@ def load_subreddit(subreddit, search="", force=0):
 			response = urllib.request.urlopen(request)
 		except:
 			children = [] 
-			results_count = 0
 			return
 
 		json_str = response.readall().decode("utf-8")
 		decoded = json.loads(json_str)
 
 		# cache json file
-		with open(cache_file, "w") as file_out:
-			file_out.write(json_str)
+		if decoded['data']['children']:
+			with open(cache_file, "w") as file_out:
+				file_out.write(json_str)
 
-	#print(json.dumps(decoded, sort_keys=True, indent=2))
 	# get children
 	children = decoded['data']['children']
-	del children[results_max:]
-	results_count = len(children)
 
-def draw_results(menu):
-	global results_count
-
-	if len(children) == 0:
-		menu.addstr(0, 0, "No results")
-		menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
-		return
-
+	# build results
+	results = []
 	i = 0
 	title_width = 46
 	template = "{0:2} {1:5} {2:%s} {3:20}" % title_width
@@ -87,63 +79,71 @@ def draw_results(menu):
 		ups = str(item['data']['ups'])
 		domain = item['data']['domain'][:20]
 		media = item['data']['media']
+
 		row = [str(i+1), ups, title, domain]
-		color = 1
-		if position == i:
-			color = 2
-		menu.addstr(i, 0, template.format(*row), curses.color_pair(color))
+		data = {}
+		data['display'] = template.format(*row)
+		if media != None and media['oembed']['type'] == "video":
+			data['video'] = item['data']['url']
+		results.append(data)
 		i += 1
-		if i >= results_max:
-			break
 
-	results_count = len(children)
-	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
+def load_downloads():
+	global results
 
-def draw_downloads(menu):
-	global results_count
-
+	# build list of downloads
+	results = []
 	i = 0
 	title_width = 70
 	template = "{0:2} {1:%s}" % title_width
-
 	files = os.listdir(files_path)
-	if len(files) == 0:
+	for file in files:
+		row = [str(i+1), file[:title_width]]
+
+		data = {}
+		data['display'] = template.format(*row)
+		data['video'] = file
+		results.append(data)
+		i += 1
+
+def draw_results(menu):
+	global results, max_display, scroll
+
+	if len(results) == 0:
 		menu.addstr(0, 0, "No results")
 		menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 		return
 
-	for file in files:
-		row = [str(i+1), file[:title_width]]
+	i = 0
+	for row in results[scroll : scroll + max_display]:
 		color = 1
 		if position == i:
 			color = 2
-		menu.addstr(i, 0, template.format(*row), curses.color_pair(color))
+		menu.addstr(i, 0, row['display'], curses.color_pair(color))
 		i += 1
-		if i >= results_max:
+		if i >= max_display:
 			break
 
-	results_count = i
 	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
 def handle_selection(menu):
-	global children, process, play_command
+	global process, play_command
 
+	index = position + scroll
 	if mode == 0:
-		item = children[position]['data']
-		if item['media'] != None:
-			media = item['media']['oembed']
-			if media['type'] == "video":
-				menu.addstr(0, 0, "downloading: " + item['url'])
-				menu.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
-				os.chdir(files_path)
-				command = "youtube-dl -q --restrict-filenames " + item['url']
-				args = shlex.split(command)
-				process = subprocess.Popen(args)
+		if 'video' in results[index]:
+			video = results[index]['video']
+			menu.addstr(0, 0, "downloading: " + video)
+			menu.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
+			os.chdir(files_path)
+			command = "youtube-dl -q --restrict-filenames " + video
+			args = shlex.split(command)
+			process = subprocess.Popen(args)
 	else:
 		os.chdir(files_path)
 		files = os.listdir(files_path)
 		if len(files) > 0:
-			command = play_command + " " + files[position]
+			command = play_command + " " + files[index]
 			args = shlex.split(command)
 			try:
 				play_process = subprocess.Popen(args)
@@ -154,9 +154,10 @@ def handle_selection(menu):
 	return 0
 
 def main(stdscr):
-	global position, mode, max_x, max_y
+	global position, mode, max_x, max_y, scroll
 
 	subreddit = "videos"
+	search = ""
 	screen = curses.initscr()
 	curses.halfdelay(10)
 	curses.curs_set(0)
@@ -185,6 +186,10 @@ def main(stdscr):
 			break
 		elif c == ord('l'):
 			mode = not mode 
+			if mode == 0:
+				load_subreddit(subreddit, search)
+			elif mode == 1:
+				load_downloads()
 			menu_results.clear()
 			position = 0
 			redraw = 1
@@ -238,21 +243,20 @@ def main(stdscr):
 				position = 0
 				redraw = 1
 		elif c == curses.KEY_UP or c == ord('k'):
-			position -= 1
-			if position < 0:
-				position = 0
+			if position <= 0 and scroll > 0:
+				scroll -= 1
+			elif position + scroll > 0:
+				position -= 1
 			redraw = 1
 		elif c == curses.KEY_DOWN or c == ord('j'):
-			position += 1
-			if position > results_count - 1:
-				position = results_count - 1
+			if position >= max_display-1 and scroll < len(results) - max_display:
+				scroll += 1
+			elif position + scroll < len(results) - 1:
+				position += 1
 			redraw = 1
 
 		if redraw:
-			if mode == 0:
-				draw_results(menu_results)
-			else:
-				draw_downloads(menu_results)
+			draw_results(menu_results)
 
 		if process != None:
 			if process.poll() == 0:
