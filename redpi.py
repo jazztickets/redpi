@@ -71,6 +71,7 @@ def load_subreddit(subreddit, search="", force=0):
 	results_count = len(children)
 
 def draw_results(menu):
+	global results_count
 
 	if len(children) == 0:
 		menu.addstr(0, 0, "No results")
@@ -95,6 +96,7 @@ def draw_results(menu):
 		if i >= results_max:
 			break
 
+	results_count = len(children)
 	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
 def draw_downloads(menu):
