@@ -18,6 +18,11 @@ files_path = os.path.expanduser("~/.cache/redpi/files/")
 cache_path = os.path.expanduser("~/.cache/redpi/")
 os.makedirs(files_path, exist_ok=True)
 
+mode_help = [
+	"r: refresh, s: subreddit, y: youtube, l: downloads, j: up, k: down, enter: download",
+	"r: refresh, s: subreddit, y: youtube, l: results, d: delete, j: up, k: down, enter: play"
+]
+
 play_command = "omxplayer"
 #play_command = "vlc -q"
 
@@ -33,11 +38,52 @@ max_y = 0
 max_x = 0
 html_parser = html.parser.HTMLParser()
 
+def load_youtube(search=""):
+	global results
+
+	# build url
+	url = "https://www.googleapis.com/youtube/v3/search?key=AIzaSyDBtXPQRsI7Ny7JZ335nq-4VGLfOk4dSJI&type=video&part=snippet&maxResults=50&q=" + urllib.parse.quote(search)
+	
+	# get results
+	results = []
+	request = urllib.request.Request(url)
+	try:
+		response = urllib.request.urlopen(request)
+	except:
+		return
+
+	# get json object
+	json_str = response.readall().decode("utf-8")
+	decoded = json.loads(json_str)
+
+	# get children
+	children = decoded['items']
+
+	# build results
+	i = 0
+	title_width = 60
+	template = "{0:2} {1:%s} {2:10}" % title_width
+	for item in children:
+		id = item['id']['videoId']
+		title = item['snippet']['title'][:title_width]
+		published_at = item['snippet']['publishedAt']
+		tdate = time.strptime(published_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+		# build row
+		row = [str(i+1), title, time.strftime("%m-%d-%Y", tdate)]
+
+		data = {}
+		data['display'] = template.format(*row)
+		data['video'] = id
+		results.append(data)
+		i += 1
+
 def load_subreddit(subreddit, search="", force=0):
 	global expired_time, results
 	cache_file = cache_path + subreddit + ".json"
 
 	# load cached results
+	results = []
 	decoded = ""
 	if search == "":
 		if force == 0 and os.path.isfile(cache_file) and time.time() - os.path.getmtime(cache_file) <= expire_time:
@@ -55,7 +101,6 @@ def load_subreddit(subreddit, search="", force=0):
 		try:
 			response = urllib.request.urlopen(request)
 		except:
-			children = [] 
 			return
 
 		json_str = response.readall().decode("utf-8")
@@ -70,7 +115,6 @@ def load_subreddit(subreddit, search="", force=0):
 	children = decoded['data']['children']
 
 	# build results
-	results = []
 	i = 0
 	title_width = 46
 	template = "{0:2} {1:5} {2:%s} {3:20}" % title_width
@@ -126,10 +170,7 @@ def draw_results(menu):
 
 def draw_help(menu):
 	menu.clear()
-	if mode == 0:
-		menu.addstr(0, 0, "r: refresh, s: subreddit, l: downloads, j: up, k: down, enter: download", curses.A_BOLD)
-	elif mode == 1:
-		menu.addstr(0, 0, "r: refresh, s: subreddit, l: results, d: delete, j: up, k: down, enter: play", curses.A_BOLD)
+	menu.addstr(0, 0, mode_help[mode][:max_x-1], curses.A_BOLD)
 	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
 def handle_selection():
@@ -176,6 +217,16 @@ def set_status(text):
 	menu_status.addstr(0, 0, text, curses.A_BOLD)
 	menu_status.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
 
+def get_input(text, screen):
+	curses.echo()
+	curses.curs_set(1)
+	screen.addstr(max_y-2, 0, text)
+	input = screen.getstr(max_y-2, len(text), 50).decode('utf-8')
+	curses.noecho()
+	curses.curs_set(0)
+
+	return input
+
 def main(stdscr):
 	global position, mode, max_x, max_y, scroll, menu_status
 
@@ -219,7 +270,7 @@ def main(stdscr):
 						scroll = 0
 				if position >= len(results):
 					position -= 1
-				set_status("p=" + str(position) + " s=" + str(scroll))
+				set_status("File deleted")
 				redraw = 1
 
 		elif c == ord('l'):
@@ -236,13 +287,7 @@ def main(stdscr):
 			mode = 0
 
 			# get input
-			curses.echo()
-			curses.curs_set(1)
-			text = "search /r/" + subreddit + ": "
-			screen.addstr(max_y-2, 0, text)
-			search = screen.getstr(max_y-2, len(text), 50).decode('utf-8')
-			curses.noecho()
-			curses.curs_set(0)
+			search = get_input("search /r/" + subreddit + ": ", screen)
 
 			# load results
 			if search != "":
@@ -255,19 +300,26 @@ def main(stdscr):
 			mode = 0
 
 			# get input
-			curses.echo()
-			curses.curs_set(1)
-			text = "subreddit: "
-			screen.addstr(max_y-2, 0, text)
-			subreddit = screen.getstr(max_y-2, len(text)).decode('utf-8')
-			curses.noecho()
-			curses.curs_set(0)
+			subreddit = get_input("subreddit: ", screen)
 
 			# load new subreddit
 			if subreddit != "":
 				position = 0
 				scroll = 0
 				load_subreddit(subreddit)
+				menu_results.clear()
+				redraw = 1
+		elif c == ord('y'):
+			mode = 0
+
+			# get input
+			query = get_input("youtube: ", screen)
+
+			# load new subreddit
+			if query != "":
+				position = 0
+				scroll = 0
+				load_youtube(query)
 				menu_results.clear()
 				redraw = 1
 		elif c == ord('r'):
