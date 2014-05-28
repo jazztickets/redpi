@@ -21,8 +21,8 @@ os.makedirs(files_path, exist_ok=True)
 play_command = "omxplayer"
 #play_command = "vlc -q"
 
-live = 1
 position = 0
+expire_time = 300
 results_max = 20
 results_count = 0
 process = None
@@ -31,13 +31,23 @@ max_y = 0
 max_x = 0
 html_parser = html.parser.HTMLParser()
 
-def load_subreddit(subreddit, search=""):
-	global children, results_count
-	if live == 1:
-		if search == "":
-			url = "http://www.reddit.com/r/" + subreddit + ".json"
+def load_subreddit(subreddit, search="", force=0):
+	global children, results_count, expired_time
+	cache_file = cache_path + subreddit + ".json"
+
+	# load cached results
+	decoded = ""
+	if search == "":
+		if force == 0 and os.path.isfile(cache_file) and time.time() - os.path.getmtime(cache_file) <= expire_time:
+			with open(cache_file, "r") as file_in:
+				decoded = json.load(file_in)
 		else:
-			url = "http://www.reddit.com/r/" + subreddit + "/search.json?q=" + urllib.parse.quote(search) + "&restrict_sr=on"
+			url = "http://www.reddit.com/r/" + subreddit + ".json"
+	else:
+		url = "http://www.reddit.com/r/" + subreddit + "/search.json?q=" + urllib.parse.quote(search) + "&restrict_sr=on"
+	
+	# load live page
+	if decoded == "": 
 		header = { 'User-Agent' : 'cool json bot' }
 		request = urllib.request.Request(url, headers=header)
 		try:
@@ -49,11 +59,13 @@ def load_subreddit(subreddit, search=""):
 
 		json_str = response.readall().decode("utf-8")
 		decoded = json.loads(json_str)
-		#print(json.dumps(decoded, sort_keys=True, indent=2))
-	else:
-		with open('test.json', 'r') as handle:
-			decoded = json.load(handle)
 
+		# cache json file
+		with open(cache_file, "w") as file_out:
+			file_out.write(json_str)
+
+	#print(json.dumps(decoded, sort_keys=True, indent=2))
+	# get children
 	children = decoded['data']['children']
 	del children[results_max:]
 	results_count = len(children)
@@ -170,7 +182,7 @@ def main(stdscr):
 		elif c == ord('q'):
 			break
 		elif c == ord('l'):
-			mode = 1
+			mode = not mode 
 			menu_results.clear()
 			position = 0
 			redraw = 1
@@ -209,6 +221,19 @@ def main(stdscr):
 				position = 0
 				load_subreddit(subreddit)
 				menu_results.clear()
+				redraw = 1
+		elif c == ord('r'):
+			if mode == 0:
+
+				# load new subreddit
+				if subreddit != "":
+					position = 0
+					load_subreddit(subreddit, force=1)
+					menu_results.clear()
+					redraw = 1
+			elif mode == 1:
+				menu_results.clear()
+				position = 0
 				redraw = 1
 		elif c == curses.KEY_UP or c == ord('k'):
 			position -= 1
