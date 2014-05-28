@@ -192,6 +192,7 @@ def main(stdscr):
 				load_downloads()
 			menu_results.clear()
 			position = 0
+			scroll = 0
 			redraw = 1
 		elif c == ord('/'):
 			mode = 0
@@ -208,6 +209,7 @@ def main(stdscr):
 			# load results
 			if search != "":
 				position = 0
+				scroll = 0
 				load_subreddit(subreddit, search)
 				menu_results.clear()
 				redraw = 1
@@ -226,6 +228,7 @@ def main(stdscr):
 			# load new subreddit
 			if subreddit != "":
 				position = 0
+				scroll = 0
 				load_subreddit(subreddit)
 				menu_results.clear()
 				redraw = 1
