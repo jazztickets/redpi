@@ -238,6 +238,8 @@ def delete_selection():
 		file = results[index]['video']
 		os.remove(files_path + file)
 
+	set_status("File deleted")
+
 	return 0
 
 def set_status(text):
@@ -300,7 +302,6 @@ def main(stdscr):
 						scroll = 0
 				if position >= len(results):
 					position -= 1
-				set_status("File deleted")
 				redraw = 1
 
 		elif c == ord('l'):
