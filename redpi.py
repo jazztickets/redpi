@@ -268,7 +268,7 @@ def get_input(text, screen):
 	return input
 
 def main(stdscr):
-	global position, mode, max_x, max_y, scroll, menu_status
+	global position, mode, max_x, max_y, scroll, menu_status, max_display
 
 	subreddit = "videos"
 	search = ""
@@ -277,6 +277,7 @@ def main(stdscr):
 	curses.curs_set(0)
 
 	(max_y, max_x) = screen.getmaxyx()
+	max_display = max_y - 4
 	curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
 	curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)
 	
@@ -292,6 +293,8 @@ def main(stdscr):
 		redraw = 0
 		if c == curses.KEY_RESIZE:
 			(max_y, max_x) = screen.getmaxyx()
+			max_display = max_y - 4
+			menu_results.clear()
 			redraw = 1
 		elif c == 10:
 			status = handle_selection()
