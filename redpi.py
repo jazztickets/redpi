@@ -2,6 +2,7 @@
 # Alan Witkowski
 #
 import json
+import platform
 import urllib
 import sys
 import time
@@ -14,8 +15,9 @@ from urllib.parse import quote
 from urllib.request import urlopen
 
 # create cache directory
-files_path = os.path.expanduser("~/.cache/redpi/files/")
 cache_path = os.path.expanduser("~/.cache/redpi/")
+files_path = os.path.expanduser("~/.cache/redpi/files/")
+os.makedirs(cache_path, exist_ok=True)
 os.makedirs(files_path, exist_ok=True)
 
 mode_help = [
@@ -23,8 +25,10 @@ mode_help = [
 	"q: quit r: refresh s: subreddit y: youtube l: results a: playall d: delete j: up k: down enter: play"
 ]
 
-play_command = "omxplayer"
-#play_command = "vlc -q"
+if platform.machine()[:3] == "arm":
+	play_command = "omxplayer"
+else:
+	play_command = "vlc -q"
 
 position = 0
 expire_time = 600
@@ -61,8 +65,10 @@ def load_youtube(search=""):
 
 	# build results
 	i = 0
-	title_width = 60
-	template = "{0:2} {1:%s} {2:10}" % title_width
+	count_width = 2
+	date_width = 10
+	title_width = max_x - (count_width+1) - (date_width+1) - 0
+	template = "{0:%s} {1:%s} {2:%s}" % (count_width, title_width, date_width)
 	for item in children:
 		id = item['id']['videoId']
 		title = item['snippet']['title'][:title_width]
@@ -90,7 +96,7 @@ def load_subreddit(subreddit, search="", force=0):
 			with open(cache_file, "r") as file_in:
 				decoded = json.load(file_in)
 		else:
-			url = "http://www.reddit.com/r/" + subreddit + ".json?limit=100"
+			url = "http://www.reddit.com/r/" + subreddit + ".json?limit=90"
 	else:
 		url = "http://www.reddit.com/r/" + subreddit + "/search.json?limit=100&q=" + urllib.parse.quote(search) + "&restrict_sr=on"
 	
@@ -116,13 +122,16 @@ def load_subreddit(subreddit, search="", force=0):
 
 	# build results
 	i = 0
-	title_width = 46
-	template = "{0:2} {1:5} {2:%s} {3:20}" % title_width
+	count_width = 2
+	vote_width = 5
+	domain_width = 20
+	title_width = max_x - (count_width+1) - (vote_width+1) - (domain_width+1) - 0
+	template = "{0:%s} {1:%s} {2:%s} {3:%s}" % (count_width, vote_width, title_width, domain_width)
 	for item in children:
 		title = html_parser.unescape(item['data']['title'][:title_width])
 		url = item['data']['url']
-		score = str(item['data']['ups'] -  item['data']['downs'])
-		domain = item['data']['domain'][:20]
+		score = str(item['data']['ups'] -  item['data']['downs'])[:vote_width]
+		domain = item['data']['domain'][:domain_width]
 		media = item['data']['media']
 
 		row = [str(i+1), score, title, domain]
@@ -139,8 +148,9 @@ def load_downloads():
 	# build list of downloads
 	results = []
 	i = 0
-	title_width = 70
-	template = "{0:2} {1:%s}" % title_width
+	count_width = 2
+	title_width = max_x - (count_width+1) 
+	template = "{0:%s} {1:%s}" % (count_width, title_width)
 	files = os.listdir(files_path)
 	for file in files:
 		row = [str(i+1), file[:title_width]]
@@ -284,6 +294,8 @@ def main(stdscr):
 	menu_results = curses.newpad(100, 300)
 	menu_status = curses.newpad(1, 300)
 	menu_help = curses.newpad(1, 300)
+
+	load_subreddit("videos")
 	draw_results(menu_results)
 	draw_help(menu_help)
 	curses.doupdate()
@@ -405,5 +417,4 @@ def main(stdscr):
 
 	curses.endwin()
 
-load_subreddit("videos")
 curses.wrapper(main)
