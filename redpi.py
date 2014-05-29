@@ -266,8 +266,9 @@ def delete_selection():
 
 	index = position + scroll
 	if mode == 1:
-		file = results[index]['video']
-		os.remove(files_path + file)
+		file = files_path + results[index]['video']
+		if os.path.isfile(file):
+			os.remove(file)
 
 	set_status("File deleted")
 
