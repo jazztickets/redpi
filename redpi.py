@@ -173,6 +173,9 @@ def draw_help(menu):
 	menu.addstr(0, 0, mode_help[mode][:max_x-1], curses.A_BOLD)
 	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
+def restore_state():
+	curses.halfdelay(10)
+
 def play_video(file):
 	set_status("Playing " + file)
 	os.chdir(files_path)
@@ -182,8 +185,12 @@ def play_video(file):
 		play_process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		play_process.wait()
 		set_status("Finished " + file)
+
+		restore_state()
 	except:
 		set_status("Playback failed")
+
+		restore_state()
 		return 1
 	
 	return 0
@@ -203,6 +210,7 @@ def handle_selection():
 			command = "youtube-dl -q --restrict-filenames " + video
 			args = shlex.split(command)
 			process = subprocess.Popen(args)
+			restore_state()
 		else:
 			return play_video(video)
 
@@ -265,7 +273,7 @@ def main(stdscr):
 	subreddit = "videos"
 	search = ""
 	screen = curses.initscr()
-	curses.halfdelay(10)
+	restore_state()
 	curses.curs_set(0)
 
 	(max_y, max_x) = screen.getmaxyx()
