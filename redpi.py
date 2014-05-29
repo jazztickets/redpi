@@ -169,7 +169,7 @@ def draw_results(menu):
 	menu.noutrefresh(0, 0, 1, 0, max_y-2, max_x-1)
 
 def draw_help(menu):
-	menu.clear()
+	menu.erase()
 	menu.addstr(0, 0, mode_help[mode][:max_x-1], curses.A_BOLD)
 	menu.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
@@ -252,7 +252,7 @@ def delete_selection():
 
 def set_status(text):
 	global menu_status
-	menu_status.clear()
+	menu_status.erase()
 	menu_status.addstr(0, 0, text[:max_x], curses.A_BOLD)
 	menu_status.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
 	curses.doupdate()
@@ -302,7 +302,7 @@ def main(stdscr):
 		elif c == ord('d'):
 			if mode == 1:
 				delete_selection()
-				menu_results.clear()
+				menu_results.erase()
 				load_downloads()
 				if scroll + max_display > len(results):
 					scroll = len(results) - max_display
@@ -318,7 +318,7 @@ def main(stdscr):
 				load_subreddit(subreddit, search)
 			elif mode == 1:
 				load_downloads()
-			menu_results.clear()
+			menu_results.erase()
 			position = 0
 			scroll = 0
 			redraw = 1
@@ -333,7 +333,7 @@ def main(stdscr):
 				position = 0
 				scroll = 0
 				load_subreddit(subreddit, search)
-				menu_results.clear()
+				menu_results.erase()
 				redraw = 1
 		elif c == ord('s'):
 			mode = 0
@@ -346,7 +346,7 @@ def main(stdscr):
 				position = 0
 				scroll = 0
 				load_subreddit(subreddit)
-				menu_results.clear()
+				menu_results.erase()
 				redraw = 1
 		elif c == ord('y'):
 			mode = 0
@@ -359,7 +359,7 @@ def main(stdscr):
 				position = 0
 				scroll = 0
 				load_youtube(query)
-				menu_results.clear()
+				menu_results.erase()
 				redraw = 1
 		elif c == ord('r'):
 			if mode == 0:
@@ -369,10 +369,10 @@ def main(stdscr):
 					position = 0
 					scroll = 0
 					load_subreddit(subreddit, force=1)
-					menu_results.clear()
+					menu_results.erase()
 					redraw = 1
 			elif mode == 1:
-				menu_results.clear()
+				menu_results.erase()
 				load_downloads()
 				position = 0
 				scroll = 0
