@@ -30,6 +30,7 @@ if platform.machine()[:3] == "arm":
 else:
 	play_command = "vlc -q"
 
+DEVNULL = open(os.devnull, "w")
 position = 0
 expire_time = 600
 results = []
@@ -195,7 +196,7 @@ def restore_state():
 	curses.halfdelay(10)
 
 def play_video(file):
-	global screen
+	global screen, DEVNULL
 
 	set_status("Playing " + file)
 	os.chdir(files_path)
@@ -205,7 +206,7 @@ def play_video(file):
 		screen.clear()
 		screen.refresh()
 
-		play_process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+		play_process = subprocess.Popen(args, stdout=DEVNULL, stderr=DEVNULL)
 		play_process.wait()
 		set_status("Finished " + file)
 
