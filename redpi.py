@@ -188,11 +188,13 @@ def load_downloads():
 	mode_results['downloads'] = []
 	i = 0
 	count_width = 2
-	title_width = max_x - (count_width+1) 
-	template = "{0:%s} {1:%s}" % (count_width, title_width)
+	date_width = 19
+	title_width = max_x - (count_width+1) - (date_width+1)
+	template = "{0:%s} {1:%s} {2:%s}" % (count_width, title_width, date_width)
 	files = os.listdir(files_path)
 	for file in files:
-		row = [str(i+1), file[:title_width]]
+		cdate = time.localtime(os.path.getctime(os.path.join(files_path, file)))
+		row = [str(i+1), file[:title_width], time.strftime("%Y-%m-%d %I:%M %p", cdate)]
 
 		data = {}
 		data['display'] = template.format(*row)
