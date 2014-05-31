@@ -26,6 +26,12 @@ mode_results = {
 	"youtube" : []
 }
 
+mode_status = {
+	"downloads" : "",
+	"reddit" : "",
+	"youtube" : "type / to search" 
+}
+
 mode_help = {
 	"downloads" : "1: downloads 2: reddit 3: youtube a: playall d: delete r: refresh q: quit",
 	"reddit" : "1: downloads 2: reddit 3: youtube s: subreddit /: search r: refresh q: quit",
@@ -53,6 +59,8 @@ html_parser = html.parser.HTMLParser()
 
 def load_youtube(search=""):
 	global mode_results
+
+	set_status("searching youtube for \"" + search + "\"")
 
 	# build url
 	url = "https://www.googleapis.com/youtube/v3/search?key=AIzaSyDBtXPQRsI7Ny7JZ335nq-4VGLfOk4dSJI&type=video&part=snippet&maxResults=50&q=" + urllib.parse.quote(search)
@@ -94,6 +102,9 @@ def load_youtube(search=""):
 		data['video'] = id
 		mode_results['youtube'].append(data)
 		i += 1
+	
+	mode_status['youtube'] = "searched \"" + search + "\""
+	set_status(mode_status['youtube'])
 
 def load_subreddit(subreddit, search="", force=0):
 	global expired_time, mode_results
@@ -103,18 +114,26 @@ def load_subreddit(subreddit, search="", force=0):
 	# load cached results
 	mode_results['reddit'] = []
 	decoded = ""
+	if subreddit == "":
+		url_subreddit = "/"
+	else:
+		url_subreddit = "/r/" + subreddit
+
 	if search == "":
-		set_status("Loading /r/" + subreddit)
+		set_status("loading /r/" + subreddit)
 		if force == 0 and os.path.isfile(cache_file) and time.time() - os.path.getmtime(cache_file) <= expire_time:
 			status_string = "/r/" + subreddit + " from cache"
 			with open(cache_file, "r") as file_in:
 				decoded = json.load(file_in)
 		else:
-			status_string = "/r/" + subreddit
-			url = "http://www.reddit.com/r/" + subreddit + ".json?limit=90"
+			if subreddit == "":
+				status_string = "reddit frontpage"
+			else:
+				status_string = "/r/" + subreddit
+			url = "http://www.reddit.com" + url_subreddit + ".json?limit=90"
 	else:
 		status_string = "searched \"" + search + "\" in /r/" + subreddit
-		url = "http://www.reddit.com/r/" + subreddit + "/search.json?limit=90&q=" + urllib.parse.quote(search) + "&restrict_sr=on"
+		url = "http://www.reddit.com" + url_subreddit + "/search.json?limit=90&q=" + urllib.parse.quote(search) + "&restrict_sr=on"
 	
 	# load live page
 	if decoded == "": 
@@ -123,6 +142,7 @@ def load_subreddit(subreddit, search="", force=0):
 		try:
 			response = urllib.request.urlopen(request)
 		except:
+			set_status("request failed")
 			return
 
 		json_str = response.readall().decode("utf-8")
@@ -144,7 +164,7 @@ def load_subreddit(subreddit, search="", force=0):
 	title_width = max_x - (count_width+1) - (vote_width+1) - (domain_width+1) - 0
 	template = "{0:%s} {1:%s} {2:%s} {3:%s}" % (count_width, vote_width, title_width, domain_width)
 	for item in children:
-		title = html_parser.unescape(item['data']['title'][:title_width])
+		title = html_parser.unescape(item['data']['title'][:title_width].replace('\r\n', ''))
 		url = item['data']['url']
 		score = str(item['data']['ups'] -  item['data']['downs'])[:vote_width]
 		domain = item['data']['domain'][:domain_width]
@@ -158,6 +178,7 @@ def load_subreddit(subreddit, search="", force=0):
 		mode_results['reddit'].append(data)
 		i += 1
 
+	mode_status['reddit'] = status_string
 	set_status(status_string)
 
 def load_downloads():
@@ -211,7 +232,7 @@ def restore_state():
 def play_video(file):
 	global screen, DEVNULL
 
-	set_status("Playing " + file)
+	set_status("playing " + file)
 	os.chdir(files_path)
 	command = play_command + " " + file
 	args = shlex.split(command)
@@ -221,11 +242,11 @@ def play_video(file):
 
 		play_process = subprocess.Popen(args, stdout=DEVNULL, stderr=DEVNULL)
 		play_process.wait()
-		set_status("Finished " + file)
+		set_status("finished " + file)
 
 		restore_state()
 	except:
-		set_status("Playback failed")
+		set_status("playback failed")
 
 		restore_state()
 		return 1
@@ -266,7 +287,7 @@ def handle_playall(screen):
 			status = play_video(video)
 			c = screen.getch()
 			if c == 27:
-				set_status("Cancelled playlist")
+				set_status("cancelled playlist")
 				return 1
 
 			if status == 1:
@@ -284,7 +305,7 @@ def delete_selection():
 		if os.path.isfile(file):
 			os.remove(file)
 
-	set_status("File deleted")
+	set_status("file deleted")
 
 	return 0
 
@@ -308,7 +329,7 @@ def get_input(text, screen):
 def main(stdscr):
 	global position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen
 
-	subreddit = "videos"
+	subreddit = ""
 	search = ""
 	screen = curses.initscr()
 	curses.curs_set(0)
@@ -323,7 +344,6 @@ def main(stdscr):
 	menu_help = curses.newpad(1, 300)
 	restore_state()
 
-	#load_subreddit("videos")
 	load_downloads()
 	draw_results()
 	draw_help()
@@ -346,17 +366,17 @@ def main(stdscr):
 			position = 0
 			scroll = 0
 			redraw = 1
-			set_status('Downloads')
+			set_status('downloads')
 		elif c == ord('2'):
 			mode = 'reddit'
 			menu_results.erase()
-			load_subreddit(subreddit, search)
+			set_status(mode_status[mode])
 			redraw = 1
 		elif c == ord('3'):
 			mode = 'youtube'
 			menu_results.erase()
+			set_status(mode_status[mode])
 			redraw = 1
-			set_status('Youtube')
 		elif c == ord('a'):
 			handle_playall(screen)
 		elif c == ord('q'):
@@ -401,17 +421,17 @@ def main(stdscr):
 
 		elif c == ord('s'):
 			if mode == 'reddit':
+
 				# get input
 				subreddit = get_input("subreddit: ", screen)
 
 				# load new subreddit
-				if subreddit != "":
-					position = 0
-					scroll = 0
-					search = ""
-					load_subreddit(subreddit)
-					menu_results.erase()
-					redraw = 1
+				position = 0
+				scroll = 0
+				search = ""
+				load_subreddit(subreddit)
+				menu_results.erase()
+				redraw = 1
 		elif c == ord('r'):
 			if mode == 'reddit':
 				position = 0
