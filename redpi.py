@@ -48,7 +48,7 @@ position = 0
 expire_time = 600
 max_display = 20
 screen = None
-process = None
+downloads = []
 menu_status = None
 menu_help = None
 scroll = 0
@@ -200,6 +200,8 @@ def load_downloads():
 		mode_results['downloads'].append(data)
 		i += 1
 
+	set_status(str(len(downloads)) + " download(s) in progress")
+
 def draw_results():
 	global menu_results
 
@@ -253,7 +255,7 @@ def play_video(file):
 	return 0
 
 def handle_selection():
-	global process
+	global downloads
 
 	if len(mode_results[mode]) == 0:
 		return
@@ -267,6 +269,7 @@ def handle_selection():
 			command = "youtube-dl -q --restrict-filenames " + video
 			args = shlex.split(command)
 			process = subprocess.Popen(args)
+			downloads.append(process)
 			restore_state()
 		else:
 			return play_video(video)
@@ -274,7 +277,6 @@ def handle_selection():
 	return 0
 
 def handle_playall(screen):
-	global process
 
 	if len(mode_results[mode]) == 0:
 		return
@@ -326,7 +328,7 @@ def get_input(text, screen):
 	return input
 
 def main(stdscr):
-	global position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen
+	global downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen
 
 	subreddit = ""
 	search = ""
@@ -365,7 +367,6 @@ def main(stdscr):
 			position = 0
 			scroll = 0
 			redraw = 1
-			set_status('downloads')
 		elif c == ord('2'):
 			mode = 'reddit'
 			menu_results.erase()
@@ -461,9 +462,12 @@ def main(stdscr):
 			draw_results()
 			draw_help()
 
-		if process != None:
-			if process.poll() == 0:
-				set_status("done")
+		# check for finished downloads
+		for download in downloads[:]:
+			download.poll()
+			if download.returncode != None:
+				downloads.remove(download)
+				set_status("download finished")
 
 		curses.doupdate()
 
