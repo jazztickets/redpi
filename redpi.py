@@ -20,10 +20,12 @@ files_path = os.path.expanduser("~/.cache/redpi/files/")
 os.makedirs(cache_path, exist_ok=True)
 os.makedirs(files_path, exist_ok=True)
 
-mode_help = [
-	"q: quit r: refresh s: subreddit y: youtube /: search l: downloads j: up k: down enter: download",
-	"q: quit r: refresh s: subreddit y: youtube l: results a: playall d: delete j: up k: down enter: play"
-]
+mode_results = {}
+mode_help = {
+	"reddit":"q: quit r: refresh s: subreddit y: youtube /: search l: downloads j: up k: down enter: download",
+	"youtube":"q: quit r: refresh s: subreddit y: youtube l: downloads j: up k: down enter: download",
+	"downloads":"q: quit r: refresh s: subreddit y: youtube a: playall d: delete j: up k: down enter: play"
+}
 
 if platform.machine()[:3] == "arm":
 	play_command = "omxplayer"
@@ -33,26 +35,25 @@ else:
 DEVNULL = open(os.devnull, "w")
 position = 0
 expire_time = 600
-results = []
 max_display = 20
 screen = None
 process = None
 menu_status = None
 menu_help = None
 scroll = 0
-mode = 0
+mode = 'downloads'
 max_y = 0
 max_x = 0
 html_parser = html.parser.HTMLParser()
 
 def load_youtube(search=""):
-	global results
+	global mode_results
 
 	# build url
 	url = "https://www.googleapis.com/youtube/v3/search?key=AIzaSyDBtXPQRsI7Ny7JZ335nq-4VGLfOk4dSJI&type=video&part=snippet&maxResults=50&q=" + urllib.parse.quote(search)
 	
 	# get results
-	results = []
+	mode_results['youtube'] = []
 	request = urllib.request.Request(url)
 	try:
 		response = urllib.request.urlopen(request)
@@ -86,15 +87,15 @@ def load_youtube(search=""):
 		data = {}
 		data['display'] = template.format(*row)
 		data['video'] = id
-		results.append(data)
+		mode_results['youtube'].append(data)
 		i += 1
 
 def load_subreddit(subreddit, search="", force=0):
-	global expired_time, results
+	global expired_time, mode_results
 	cache_file = cache_path + subreddit + ".json"
 
 	# load cached results
-	results = []
+	mode_results['reddit'] = []
 	decoded = ""
 	if search == "":
 		if force == 0 and os.path.isfile(cache_file) and time.time() - os.path.getmtime(cache_file) <= expire_time:
@@ -144,14 +145,14 @@ def load_subreddit(subreddit, search="", force=0):
 		data['display'] = template.format(*row)
 		if media != None and 'oembed' in media and media['oembed']['type'] == "video":
 			data['video'] = item['data']['url']
-		results.append(data)
+		mode_results['reddit'].append(data)
 		i += 1
 
 def load_downloads():
-	global results
+	global mode_results
 
 	# build list of downloads
-	results = []
+	mode_results['downloads'] = []
 	i = 0
 	count_width = 2
 	title_width = max_x - (count_width+1) 
@@ -163,17 +164,17 @@ def load_downloads():
 		data = {}
 		data['display'] = template.format(*row)
 		data['video'] = file
-		results.append(data)
+		mode_results['downloads'].append(data)
 		i += 1
 
 def draw_results():
 	global menu_results
 
-	if len(results) == 0:
+	if len(mode_results) == 0:
 		menu_results.addstr(0, 0, "No results")
 	else:
 		i = 0
-		for row in results[scroll : scroll + max_display]:
+		for row in mode_results[mode][scroll : scroll + max_display]:
 			color = 1
 			if position == i:
 				color = 2
@@ -222,13 +223,13 @@ def play_video(file):
 def handle_selection():
 	global process
 
-	if len(results) == 0:
+	if len(mode_results[mode]) == 0:
 		return
 
 	index = position + scroll
-	if 'video' in results[index]:
-		video = results[index]['video']
-		if mode == 0:
+	if 'video' in mode_results[mode][index]:
+		video = mode_results[mode][index]['video']
+		if mode != 'downloads':
 			set_status("downloading: " + video)
 			os.chdir(files_path)
 			command = "youtube-dl -q --restrict-filenames " + video
@@ -243,11 +244,11 @@ def handle_selection():
 def handle_playall(screen):
 	global process
 
-	if len(results) == 0:
+	if len(mode_results[mode]) == 0:
 		return
 
 	index = position + scroll
-	for item in results[index:]:
+	for item in mode_results[mode][index:]:
 		if 'video' in item:
 			video = item['video']
 			status = play_video(video)
@@ -262,12 +263,12 @@ def handle_playall(screen):
 	return 0
 
 def delete_selection():
-	if len(results) == 0:
+	if len(mode_results[mode]) == 0:
 		return
 
 	index = position + scroll
-	if mode == 1:
-		file = files_path + results[index]['video']
+	if mode == 'downloads':
+		file = files_path + mode_results[mode][index]['video']
 		if os.path.isfile(file):
 			os.remove(file)
 
@@ -310,7 +311,8 @@ def main(stdscr):
 	menu_help = curses.newpad(1, 300)
 	restore_state()
 
-	load_subreddit("videos")
+	#load_subreddit("videos")
+	load_downloads()
 	draw_results()
 	draw_help()
 	curses.doupdate()
@@ -330,30 +332,27 @@ def main(stdscr):
 		elif c == ord('q'):
 			break
 		elif c == ord('d'):
-			if mode == 1:
+			if mode == 'downloads':
 				delete_selection()
 				menu_results.erase()
 				load_downloads()
-				if scroll + max_display > len(results):
-					scroll = len(results) - max_display
+				if scroll + max_display > len(mode_results[mode]):
+					scroll = len(mode_results[mode]) - max_display
 					if scroll < 0:
 						scroll = 0
-				if position >= len(results):
+				if position >= len(mode_results[mode]):
 					position -= 1
 				redraw = 1
 
 		elif c == ord('l'):
-			mode = not mode 
-			if mode == 0:
-				load_subreddit(subreddit, search)
-			elif mode == 1:
-				load_downloads()
+			mode = 'downloads'
+			load_downloads()
 			menu_results.erase()
 			position = 0
 			scroll = 0
 			redraw = 1
 		elif c == ord('/'):
-			mode = 0
+			mode = 'reddit'
 
 			# get input
 			search = get_input("search /r/" + subreddit + ": ", screen)
@@ -366,7 +365,7 @@ def main(stdscr):
 				menu_results.erase()
 				redraw = 1
 		elif c == ord('s'):
-			mode = 0
+			mode = 'reddit'
 
 			# get input
 			subreddit = get_input("subreddit: ", screen)
@@ -379,7 +378,7 @@ def main(stdscr):
 				menu_results.erase()
 				redraw = 1
 		elif c == ord('y'):
-			mode = 0
+			mode = 'youtube'
 
 			# get input
 			query = get_input("youtube: ", screen)
@@ -392,7 +391,7 @@ def main(stdscr):
 				menu_results.erase()
 				redraw = 1
 		elif c == ord('r'):
-			if mode == 0:
+			if mode == 'reddit':
 
 				# load new subreddit
 				if subreddit != "":
@@ -401,7 +400,7 @@ def main(stdscr):
 					load_subreddit(subreddit, force=1)
 					menu_results.erase()
 					redraw = 1
-			elif mode == 1:
+			elif mode == 'downloads':
 				menu_results.erase()
 				load_downloads()
 				position = 0
@@ -414,9 +413,9 @@ def main(stdscr):
 				position -= 1
 			redraw = 1
 		elif c == curses.KEY_DOWN or c == ord('j'):
-			if position >= max_display-1 and scroll < len(results) - max_display:
+			if position >= max_display-1 and scroll < len(mode_results[mode]) - max_display:
 				scroll += 1
-			elif position + scroll < len(results) - 1:
+			elif position + scroll < len(mode_results[mode]) - 1:
 				position += 1
 			redraw = 1
 
