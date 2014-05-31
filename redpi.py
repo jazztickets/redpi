@@ -20,11 +20,16 @@ files_path = os.path.expanduser("~/.cache/redpi/files/")
 os.makedirs(cache_path, exist_ok=True)
 os.makedirs(files_path, exist_ok=True)
 
-mode_results = {}
+mode_results = {
+	"downloads" : [],
+	"reddit" : [],
+	"youtube" : []
+}
+
 mode_help = {
-	"reddit":"q: quit r: refresh s: subreddit y: youtube /: search l: downloads j: up k: down enter: download",
-	"youtube":"q: quit r: refresh s: subreddit y: youtube l: downloads j: up k: down enter: download",
-	"downloads":"q: quit r: refresh s: subreddit y: youtube a: playall d: delete j: up k: down enter: play"
+	"downloads" : "1: downloads 2: reddit 3: youtube a: playall d: delete r: refresh q: quit",
+	"reddit" : "1: downloads 2: reddit 3: youtube s: subreddit /: search r: refresh q: quit",
+	"youtube" : "1: downloads 2: reddit 3: youtube /: search q: quit"
 }
 
 if platform.machine()[:3] == "arm":
@@ -93,17 +98,22 @@ def load_youtube(search=""):
 def load_subreddit(subreddit, search="", force=0):
 	global expired_time, mode_results
 	cache_file = cache_path + subreddit + ".json"
+	status_string = ""
 
 	# load cached results
 	mode_results['reddit'] = []
 	decoded = ""
 	if search == "":
+		set_status("Loading /r/" + subreddit)
 		if force == 0 and os.path.isfile(cache_file) and time.time() - os.path.getmtime(cache_file) <= expire_time:
+			status_string = "/r/" + subreddit + " from cache"
 			with open(cache_file, "r") as file_in:
 				decoded = json.load(file_in)
 		else:
+			status_string = "/r/" + subreddit
 			url = "http://www.reddit.com/r/" + subreddit + ".json?limit=90"
 	else:
+		status_string = "searched \"" + search + "\" in /r/" + subreddit
 		url = "http://www.reddit.com/r/" + subreddit + "/search.json?limit=90&q=" + urllib.parse.quote(search) + "&restrict_sr=on"
 	
 	# load live page
@@ -148,6 +158,8 @@ def load_subreddit(subreddit, search="", force=0):
 		mode_results['reddit'].append(data)
 		i += 1
 
+	set_status(status_string)
+
 def load_downloads():
 	global mode_results
 
@@ -170,7 +182,7 @@ def load_downloads():
 def draw_results():
 	global menu_results
 
-	if len(mode_results) == 0:
+	if len(mode_results[mode]) == 0:
 		menu_results.addstr(0, 0, "No results")
 	else:
 		i = 0
@@ -327,6 +339,24 @@ def main(stdscr):
 			redraw = 1
 		elif c == 10:
 			status = handle_selection()
+		elif c == ord('1'):
+			mode = 'downloads'
+			load_downloads()
+			menu_results.erase()
+			position = 0
+			scroll = 0
+			redraw = 1
+			set_status('Downloads')
+		elif c == ord('2'):
+			mode = 'reddit'
+			menu_results.erase()
+			load_subreddit(subreddit, search)
+			redraw = 1
+		elif c == ord('3'):
+			mode = 'youtube'
+			menu_results.erase()
+			redraw = 1
+			set_status('Youtube')
 		elif c == ord('a'):
 			handle_playall(screen)
 		elif c == ord('q'):
@@ -343,63 +373,52 @@ def main(stdscr):
 				if position >= len(mode_results[mode]):
 					position -= 1
 				redraw = 1
-
-		elif c == ord('l'):
-			mode = 'downloads'
-			load_downloads()
-			menu_results.erase()
-			position = 0
-			scroll = 0
-			redraw = 1
 		elif c == ord('/'):
-			mode = 'reddit'
-
-			# get input
-			search = get_input("search /r/" + subreddit + ": ", screen)
-
-			# load results
-			if search != "":
-				position = 0
-				scroll = 0
-				load_subreddit(subreddit, search)
-				menu_results.erase()
-				redraw = 1
-		elif c == ord('s'):
-			mode = 'reddit'
-
-			# get input
-			subreddit = get_input("subreddit: ", screen)
-
-			# load new subreddit
-			if subreddit != "":
-				position = 0
-				scroll = 0
-				load_subreddit(subreddit)
-				menu_results.erase()
-				redraw = 1
-		elif c == ord('y'):
-			mode = 'youtube'
-
-			# get input
-			query = get_input("youtube: ", screen)
-
-			# load new subreddit
-			if query != "":
-				position = 0
-				scroll = 0
-				load_youtube(query)
-				menu_results.erase()
-				redraw = 1
-		elif c == ord('r'):
 			if mode == 'reddit':
+
+				# get input
+				search = get_input("search /r/" + subreddit + ": ", screen)
+
+				# load results
+				if search != "":
+					position = 0
+					scroll = 0
+					load_subreddit(subreddit, search)
+					menu_results.erase()
+					redraw = 1
+			elif mode == 'youtube':
+
+				# get input
+				query = get_input("youtube: ", screen)
+
+				# load new subreddit
+				if query != "":
+					position = 0
+					scroll = 0
+					load_youtube(query)
+					menu_results.erase()
+					redraw = 1
+
+		elif c == ord('s'):
+			if mode == 'reddit':
+				# get input
+				subreddit = get_input("subreddit: ", screen)
 
 				# load new subreddit
 				if subreddit != "":
 					position = 0
 					scroll = 0
-					load_subreddit(subreddit, force=1)
+					search = ""
+					load_subreddit(subreddit)
 					menu_results.erase()
 					redraw = 1
+		elif c == ord('r'):
+			if mode == 'reddit':
+				position = 0
+				scroll = 0
+				load_subreddit(subreddit, search, force=1)
+				menu_results.erase()
+				redraw = 1
 			elif mode == 'downloads':
 				menu_results.erase()
 				load_downloads()
