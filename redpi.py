@@ -28,8 +28,8 @@ mode_results = {
 
 mode_status = {
 	"downloads" : "",
-	"reddit" : "",
-	"youtube" : "type / to search" 
+	"reddit" : "type s to select subreddit",
+	"youtube" : "type / to search youtube" 
 }
 
 mode_help = {
@@ -232,9 +232,8 @@ def restore_state():
 def play_video(file):
 	global screen, DEVNULL
 
-	set_status("playing " + file)
 	os.chdir(files_path)
-	command = play_command + " " + file
+	command = play_command + " \"" + file.replace("\"", "\\\"") + "\""
 	args = shlex.split(command)
 	try:
 		screen.clear()
@@ -301,11 +300,11 @@ def delete_selection():
 
 	index = position + scroll
 	if mode == 'downloads':
-		file = files_path + mode_results[mode][index]['video']
+		file = os.path.join(files_path, mode_results[mode][index]['video'])
 		if os.path.isfile(file):
 			os.remove(file)
 
-	set_status("file deleted")
+	set_status("deleted " + file)
 
 	return 0
 
