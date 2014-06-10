@@ -11,7 +11,12 @@ import subprocess
 import shlex
 import os
 import html.parser
-from urllib.parse import quote
+import http.server
+import threading
+import socketserver
+import re
+from socket import gethostbyname, gethostname
+from urllib.parse import quote, urlparse, parse_qs
 from urllib.request import urlopen
 
 # create cache directory
@@ -19,6 +24,9 @@ cache_path = os.path.expanduser("~/.cache/redpi/")
 files_path = os.path.expanduser("~/.cache/redpi/files/")
 os.makedirs(cache_path, exist_ok=True)
 os.makedirs(files_path, exist_ok=True)
+
+hostname = ""
+port = 8080
 
 mode_results = {
 	"downloads" : [],
@@ -56,6 +64,35 @@ mode = 'downloads'
 max_y = 0
 max_x = 0
 html_parser = html.parser.HTMLParser()
+
+class HttpHandler(http.server.BaseHTTPRequestHandler):
+
+	def log_message(self, format, *args):
+		pass
+	def do_HEAD(s):
+		s.send_response(200)
+		s.send_header("Content-type", "text/html")
+		s.end_headers()
+	def do_GET(s):
+		global downloads
+		s.send_response(200)
+		s.send_header("Content-type", "text/html")
+		s.end_headers()
+		url_data = urlparse(s.path)
+		query = parse_qs(url_data.query)
+		url = re.search("(https?://.+)", query['url'][0])
+		if url:
+			video = url.group(1)
+			set_status("downloading: " + video)
+			os.chdir(files_path)
+			command = "youtube-dl -q --restrict-filenames " + video
+			args = shlex.split(command)
+			process = subprocess.Popen(args)
+			downloads.append(process)
+			restore_state()
+
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+	pass
 
 def load_youtube(search=""):
 	global mode_results
@@ -332,6 +369,13 @@ def get_input(text, screen):
 def main(stdscr):
 	global downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen
 
+	ThreadedTCPServer.allow_reuse_address = True
+	server = ThreadedTCPServer((hostname, port), HttpHandler)
+
+	server_thread = threading.Thread(target=server.serve_forever)
+	server_thread.daemon = True
+	server_thread.start()
+
 	subreddit = ""
 	search = ""
 	screen = curses.initscr()
@@ -350,6 +394,7 @@ def main(stdscr):
 	load_downloads()
 	draw_results()
 	draw_help()
+	set_status("web server started on " + gethostbyname(gethostname()) + ":" + str(port))
 	curses.doupdate()
 
 	while True:
@@ -382,6 +427,8 @@ def main(stdscr):
 		elif c == ord('a'):
 			handle_playall(screen)
 		elif c == ord('q'):
+			server.shutdown()
+			server.server_close()
 			break
 		elif c == ord('d'):
 			if mode == 'downloads':
