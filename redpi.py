@@ -74,22 +74,27 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 		s.send_header("Content-type", "text/html")
 		s.end_headers()
 	def do_GET(s):
-		global downloads
 		s.send_response(200)
 		s.send_header("Content-type", "text/html")
 		s.end_headers()
+
+		# get client info
+		client_host, client_port = s.client_address
+		client_string = client_host + ":" + str(client_port)
+
+		# parse url
 		url_data = urlparse(s.path)
+		path = url_data.path
 		query = parse_qs(url_data.query)
-		url = re.search("(https?://.+)", query['url'][0])
-		if url:
-			video = url.group(1)
-			set_status("downloading: " + video)
-			os.chdir(files_path)
-			command = "youtube-dl -q --restrict-filenames " + video
-			args = shlex.split(command)
-			process = subprocess.Popen(args)
-			downloads.append(process)
-			restore_state()
+
+		# choose action
+		if path == "/download":
+			url = re.search("(https?://.+)", query['url'][0])
+			if url:
+				video = url.group(1)
+				download_video(video)
+		elif path == "/test":
+			set_status("test button hit from " + client_string)
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 	pass
@@ -294,7 +299,6 @@ def play_video(file):
 	return 0
 
 def handle_selection():
-	global downloads
 
 	if len(mode_results[mode]) == 0:
 		return
@@ -303,17 +307,22 @@ def handle_selection():
 	if 'video' in mode_results[mode][index]:
 		video = mode_results[mode][index]['video']
 		if mode != 'downloads':
-			set_status("downloading: " + video)
-			os.chdir(files_path)
-			command = "youtube-dl -q --restrict-filenames " + video
-			args = shlex.split(command)
-			process = subprocess.Popen(args)
-			downloads.append(process)
-			restore_state()
+			download_video(video)
 		else:
 			return play_video(video)
 
 	return 0
+
+def download_video(video):
+	global downloads
+
+	set_status("downloading: " + video)
+	os.chdir(files_path)
+	command = "youtube-dl -q --restrict-filenames " + video
+	args = shlex.split(command)
+	process = subprocess.Popen(args)
+	downloads.append(process)
+	restore_state()
 
 def handle_playall(screen):
 
