@@ -57,6 +57,8 @@ expire_time = 600
 max_display = 20
 screen = None
 downloads = []
+download_process = None
+play_process = None
 menu_status = None
 menu_help = None
 scroll = 0
@@ -244,7 +246,7 @@ def load_downloads():
 		mode_results['downloads'].append(data)
 		i += 1
 
-	set_status(str(len(downloads)) + " download(s) in progress")
+	set_status(str(len(downloads)) + " download(s) in queue")
 
 def draw_results():
 	global menu_results
@@ -255,7 +257,11 @@ def draw_results():
 		i = 0
 		for row in mode_results[mode][scroll : scroll + max_display]:
 			color = 1
-			if position == i:
+			if mode == 'downloads' and row['video'].endswith(".part"):
+				color = 3
+				if position == i:
+					color = 4
+			elif position == i:
 				color = 2
 			menu_results.addstr(i, 0, row['display'], curses.color_pair(color))
 			i += 1
@@ -276,7 +282,7 @@ def restore_state():
 	curses.halfdelay(10)
 
 def play_video(file):
-	global screen, DEVNULL
+	global screen, play_process, DEVNULL
 
 	os.chdir(files_path)
 	command = play_command + " \"" + file.replace("\"", "\\\"") + "\""
@@ -287,7 +293,9 @@ def play_video(file):
 
 		play_process = subprocess.Popen(args, stdout=DEVNULL, stderr=DEVNULL)
 		play_process.wait()
+
 		set_status("finished " + file)
+		play_process = None
 
 		restore_state()
 	except:
@@ -316,13 +324,37 @@ def handle_selection():
 def download_video(video):
 	global downloads
 
-	set_status("downloading: " + video)
-	os.chdir(files_path)
-	command = "youtube-dl -q --restrict-filenames " + video
-	args = shlex.split(command)
-	process = subprocess.Popen(args)
-	downloads.append(process)
+	downloads.append(video)
+	set_status(str(len(downloads)) + " download(s) in queue - adding " + video + " to queue")
+	process_download_queue()
 	restore_state()
+
+def process_download_queue():
+	global downloads, download_process
+
+	# check for existing download
+	if download_process != None:
+		download_process.poll()
+		if download_process.returncode != None:
+			download_process = None
+
+			# set status if nothing is playing
+			if play_process == None:
+				set_status(str(len(downloads)) + " download(s) in queue - download finished")
+	elif download_process == None and len(downloads) > 0:
+		
+		# get next download in queue
+		video = downloads.pop(0);
+
+		# run youtube-dl
+		os.chdir(files_path)
+		command = "youtube-dl -q --restrict-filenames " + video
+		args = shlex.split(command)
+		download_process = subprocess.Popen(args)
+
+		# set status if nothing is playing
+		if play_process == None:
+			set_status(str(len(downloads)) + " download(s) in queue - downloading: " + video)
 
 def handle_playall(screen):
 
@@ -394,6 +426,8 @@ def main(stdscr):
 	max_display = max_y - 4
 	curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
 	curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)
+	curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_BLACK)
+	curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_RED)
 	
 	menu_results = curses.newpad(100, 300)
 	menu_status = curses.newpad(1, 300)
@@ -520,12 +554,8 @@ def main(stdscr):
 			draw_results()
 			draw_help()
 
-		# check for finished downloads
-		for download in downloads[:]:
-			download.poll()
-			if download.returncode != None:
-				downloads.remove(download)
-				set_status("download finished")
+		# check download queue
+		process_download_queue()
 
 		curses.doupdate()
 
