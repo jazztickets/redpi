@@ -277,6 +277,10 @@ def draw_help():
 	menu_help.noutrefresh(0, 0, 0, 0, max_y-1, max_x-1)
 
 def restore_state():
+	global play_process
+	if play_process != None:
+		return
+
 	draw_help()
 	draw_results()
 	curses.halfdelay(10)
@@ -300,6 +304,7 @@ def play_video(file):
 		restore_state()
 	except:
 		set_status("playback failed")
+		play_process = None
 
 		restore_state()
 		return 1
@@ -322,10 +327,11 @@ def handle_selection():
 	return 0
 
 def download_video(video):
-	global downloads
+	global downloads, play_process
 
 	downloads.append(video)
-	set_status(str(len(downloads)) + " download(s) in queue - adding " + video + " to queue")
+	if play_process == None:
+		set_status(str(len(downloads)) + " download(s) in queue - adding " + video + " to queue")
 	process_download_queue()
 	restore_state()
 
