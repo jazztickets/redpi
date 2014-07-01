@@ -236,6 +236,7 @@ def load_downloads():
 	title_width = max_x - (count_width+1) - (date_width+1)
 	template = "{0:%s} {1:%s} {2:%s}" % (count_width, title_width, date_width)
 	files = os.listdir(files_path)
+	files.sort(key=lambda file: os.path.getmtime(files_path + file))
 	for file in files:
 		cdate = time.localtime(os.path.getctime(os.path.join(files_path, file)))
 		row = [str(i+1), file[:title_width], time.strftime("%Y-%m-%d %I:%M %p", cdate)]
