@@ -247,7 +247,7 @@ def load_downloads():
 		mode_results['downloads'].append(data)
 		i += 1
 
-	set_status(str(len(downloads)) + " download(s) in queue")
+	set_status(str(download_count()) + " download(s) in progress")
 
 def draw_results():
 	global menu_results
@@ -327,12 +327,20 @@ def handle_selection():
 
 	return 0
 
+def download_count():
+	global downloads, download_process
+	count = len(downloads)
+	if download_process != None:
+		count += 1
+	
+	return count
+
 def download_video(video):
 	global downloads, play_process
 
 	downloads.append(video)
 	if play_process == None:
-		set_status(str(len(downloads)) + " download(s) in queue - adding " + video + " to queue")
+		set_status(str(download_count()) + " download(s) in progress - adding " + video + " to queue")
 	process_download_queue()
 	restore_state()
 
@@ -347,7 +355,7 @@ def process_download_queue():
 
 			# set status if nothing is playing
 			if play_process == None:
-				set_status(str(len(downloads)) + " download(s) in queue - download finished")
+				set_status(str(download_count()) + " download(s) in progress - download finished")
 	elif download_process == None and len(downloads) > 0:
 		
 		# get next download in queue
@@ -361,7 +369,7 @@ def process_download_queue():
 
 		# set status if nothing is playing
 		if play_process == None:
-			set_status(str(len(downloads)) + " download(s) in queue - downloading: " + video)
+			set_status(str(download_count()) + " download(s) in progress - downloading: " + video)
 
 def handle_playall(screen):
 
