@@ -31,19 +31,22 @@ port = 8080
 mode_results = {
 	"downloads" : [],
 	"reddit" : [],
-	"youtube" : []
+	"youtube" : [],
+	"twitch" : []
 }
 
 mode_status = {
 	"downloads" : "",
 	"reddit" : "type s to select subreddit",
-	"youtube" : "type / to search youtube" 
+	"youtube" : "type / to search youtube",
+	"twitch" : "" 
 }
 
 mode_help = {
-	"downloads" : "1: downloads 2: reddit 3: youtube a: playall d: delete r: refresh q: quit",
-	"reddit" : "1: downloads 2: reddit 3: youtube s: subreddit /: search r: refresh q: quit",
-	"youtube" : "1: downloads 2: reddit 3: youtube /: search q: quit"
+	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch a: playall d: delete r: refresh q: quit",
+	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit /: search r: refresh q: quit",
+	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch /: search q: quit",
+	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games q: quit"
 }
 
 if platform.machine()[:3] == "arm":
@@ -51,6 +54,7 @@ if platform.machine()[:3] == "arm":
 else:
 	play_command = "vlc -q"
 
+stream_command = "livestreamer"
 DEVNULL = open(os.devnull, "w")
 position = 0
 expire_time = 600
@@ -225,6 +229,105 @@ def load_subreddit(subreddit, search="", force=0):
 	mode_status['reddit'] = status_string
 	set_status(status_string)
 
+def load_twitch_games():
+	global mode_results
+
+	set_status("loading twitch.tv games")
+
+	# build url
+	url = "https://api.twitch.tv/kraken/games/top?limit=100"
+
+	# get results
+	mode_results['twitch'] = []
+	request = urllib.request.Request(url)
+	try:
+		response = urllib.request.urlopen(request)
+	except:
+		return
+
+	# get json object
+	json_str = response.readall().decode("utf-8")
+	decoded = json.loads(json_str)
+
+	# get children
+	children = decoded['top']
+
+	# build results
+	i = 0
+	count_width = 2
+	viewers_width = 8
+	title_width = max_x - (count_width+1) - (viewers_width+1) - 0
+	template = "{0:%s} {1:%s} {2:%s}" % (count_width, title_width, viewers_width)
+	for item in children:
+		id = item['game']['name']
+		title = item['game']['name'][:title_width]
+		viewers = str(item['viewers'])[:viewers_width]
+
+		# build row
+		row = [str(i+1), title, viewers]
+
+		data = {}
+		data['display'] = template.format(*row)
+		data['video'] = id
+		data['type'] = 'game'
+		mode_results['twitch'].append(data)
+		i += 1
+	
+	mode_status['twitch'] = "twitch.tv games"
+	set_status(mode_status['twitch'])
+
+def load_twitch_streams(game):
+	global mode_results
+
+	set_status("loading twitch.tv streams for " + game)
+
+	# build url
+	url = "https://api.twitch.tv/kraken/streams?limit=100&game=" + urllib.parse.quote(game)
+	
+	# get results
+	mode_results['twitch'] = []
+	request = urllib.request.Request(url)
+	try:
+		response = urllib.request.urlopen(request)
+	except:
+		return
+
+	# get json object
+	json_str = response.readall().decode("utf-8")
+	decoded = json.loads(json_str)
+
+	# get children
+	children = decoded['streams']
+
+	# build results
+	i = 0
+	count_width = 2
+	viewers_width = 8
+	name_width = 20
+	title_width = max_x - (count_width+1) - (viewers_width+1) - (name_width+1) - 0
+	template = "{0:%s} {1:%s} {2:%s} {3:%s}" % (count_width, title_width, name_width, viewers_width)
+	for item in children:
+		id = item['channel']['url']
+		if item['channel']['status'] != None:
+			title = item['channel']['status'][:title_width]
+		else:
+			title = item['channel']['display_name'][:title_width]
+		name = item['channel']['display_name'][:name_width]
+		viewers = str(item['viewers'])[:viewers_width]
+
+		# build row
+		row = [str(i+1), title, name, viewers]
+
+		data = {}
+		data['display'] = template.format(*row)
+		data['video'] = id
+		data['type'] = 'stream'
+		mode_results['twitch'].append(data)
+		i += 1
+	
+	mode_status['twitch'] = "twitch.tv streams for " + game
+	set_status(mode_status['twitch'])
+
 def load_downloads():
 	global mode_results
 
@@ -312,20 +415,58 @@ def play_video(file):
 
 	return 0
 
-def handle_selection():
+def stream_video(url):
+	global screen, play_process, DEVNULL
 
-	if len(mode_results[mode]) == 0:
-		return
+	os.chdir(files_path)
+	quality = "source"
+	command = stream_command + " \"" + url + "\" " + quality
+	args = shlex.split(command)
+	try:
+		screen.clear()
+		screen.refresh()
 
-	index = position + scroll
-	if 'video' in mode_results[mode][index]:
-		video = mode_results[mode][index]['video']
-		if mode != 'downloads':
-			download_video(video)
-		else:
-			return play_video(video)
+		play_process = subprocess.Popen(args, stdout=DEVNULL, stderr=DEVNULL)
+		play_process.wait()
+
+		set_status("finished " + file)
+		play_process = None
+
+		restore_state()
+	except:
+		set_status("playback failed")
+		play_process = None
+
+		restore_state()
+		return 1
 
 	return 0
+
+def handle_selection():
+
+	# get data array from results page
+	data = mode_results[mode]
+
+	# check for empty data
+	if len(data) == 0:
+		return (0, 0)
+
+	# get index into array
+	index = position + scroll
+	if 'video' in data[index]:
+		video = data[index]['video']
+		if mode == 'twitch':
+			if data[index]['type'] == 'game':
+				load_twitch_streams(video)
+				return (0, 1)
+			else:
+				return (stream_video(video), 0)
+		elif mode != 'downloads':
+			download_video(video)
+		else:
+			return (play_video(video), 0)
+
+	return (0, 0)
 
 def download_count():
 	global downloads, download_process
@@ -464,7 +605,7 @@ def main(stdscr):
 			menu_results.clear()
 			redraw = 1
 		elif c == 10:
-			status = handle_selection()
+			(status, redraw) = handle_selection()
 		elif c == ord('1'):
 			mode = 'downloads'
 			load_downloads()
@@ -480,6 +621,15 @@ def main(stdscr):
 		elif c == ord('3'):
 			mode = 'youtube'
 			menu_results.erase()
+			set_status(mode_status[mode])
+			redraw = 1
+		elif c == ord('4'):
+			mode = 'twitch'
+			menu_results.erase()
+
+			# load games by default
+			if len(mode_results[mode]) == 0:
+				load_twitch_games()
 			set_status(mode_status[mode])
 			redraw = 1
 		elif c == ord('a'):
@@ -537,6 +687,16 @@ def main(stdscr):
 				scroll = 0
 				search = ""
 				load_subreddit(subreddit)
+				menu_results.erase()
+				redraw = 1
+		elif c == ord('g'):
+			if mode == 'twitch':
+
+				# load twitch games
+				position = 0
+				scroll = 0
+				search = ""
+				load_twitch_games()
 				menu_results.erase()
 				redraw = 1
 		elif c == ord('r'):
