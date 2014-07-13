@@ -420,13 +420,15 @@ def stream_video(url):
 
 	os.chdir(files_path)
 	quality = "source"
-	command = stream_command + " \"" + url + "\" " + quality
-	args = shlex.split(command)
+	command = stream_command + " " + url + " " + quality + " --player omxplayer --fifo"
+	lex = shlex.shlex(command)
+	lex.whitespace_split = True
+	args = list(lex)
 	try:
 		screen.clear()
 		screen.refresh()
 
-		play_process = subprocess.Popen(args, stdout=DEVNULL, stderr=DEVNULL)
+		play_process = subprocess.Popen(args, stderr=DEVNULL)
 		play_process.wait()
 
 		set_status("finished " + file)
