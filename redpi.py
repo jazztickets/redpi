@@ -51,8 +51,10 @@ mode_help = {
 
 if platform.machine()[:3] == "arm":
 	play_command = "omxplayer"
+	stream_player = "omxplayer --fifo"
 else:
 	play_command = "vlc -q"
+	stream_player = "vlc"
 
 stream_command = "livestreamer"
 DEVNULL = open(os.devnull, "w")
@@ -420,7 +422,7 @@ def stream_video(url):
 
 	os.chdir(files_path)
 	quality = "source"
-	command = stream_command + " " + url + " " + quality + " --player omxplayer --fifo"
+	command = stream_command + " " + url + " " + quality + " --player " + stream_player
 	lex = shlex.shlex(command)
 	lex.whitespace_split = True
 	args = list(lex)
