@@ -446,6 +446,7 @@ def stream_video(url):
 
 	return 0
 
+# returns status, redraw
 def handle_selection():
 
 	# get data array from results page
@@ -610,6 +611,10 @@ def main(stdscr):
 			redraw = 1
 		elif c == 10:
 			(status, redraw) = handle_selection()
+			if redraw == 1:
+				menu_results.erase()
+				position = 0
+				scroll = 0
 		elif c == ord('1'):
 			mode = 'downloads'
 			load_downloads()
