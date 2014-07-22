@@ -625,16 +625,22 @@ def main(stdscr):
 		elif c == ord('2'):
 			mode = 'reddit'
 			menu_results.erase()
+			position = 0
+			scroll = 0
 			set_status(mode_status[mode])
 			redraw = 1
 		elif c == ord('3'):
 			mode = 'youtube'
 			menu_results.erase()
+			position = 0
+			scroll = 0
 			set_status(mode_status[mode])
 			redraw = 1
 		elif c == ord('4'):
 			mode = 'twitch'
 			menu_results.erase()
+			position = 0
+			scroll = 0
 
 			# load games by default
 			if len(mode_results[mode]) == 0:
