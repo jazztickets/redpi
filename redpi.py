@@ -22,8 +22,10 @@ from urllib.request import urlopen
 # create cache directory
 cache_path = os.path.expanduser("~/.cache/redpi/")
 files_path = os.path.expanduser("~/.cache/redpi/files/")
+images_path = os.path.expanduser("~/.cache/redpi/images/")
 os.makedirs(cache_path, exist_ok=True)
 os.makedirs(files_path, exist_ok=True)
+os.makedirs(images_path, exist_ok=True)
 
 hostname = ""
 port = 8080
@@ -51,9 +53,11 @@ mode_help = {
 
 if platform.machine()[:3] == "arm":
 	play_command = "omxplayer"
+	view_command = "fbi"
 	stream_player = "omxplayer --fifo"
 else:
 	play_command = "vlc -q"
+	view_command = "xdg-open"
 	stream_player = "vlc"
 
 stream_command = "livestreamer"
@@ -225,6 +229,7 @@ def load_subreddit(subreddit, search="", force=0):
 		data['display'] = template.format(*row)
 		if media != None and 'oembed' in media and media['oembed']['type'] == "video":
 			data['video'] = item['data']['url']
+		data['url'] = item['data']['url']
 		mode_results['reddit'].append(data)
 		i += 1
 
@@ -433,12 +438,61 @@ def stream_video(url):
 		play_process = subprocess.Popen(args, stderr=DEVNULL)
 		play_process.wait()
 
-		set_status("finished " + file)
+		set_status("finished stream")
 		play_process = None
 
 		restore_state()
+		
 	except:
+
 		set_status("playback failed")
+		play_process = None
+
+		restore_state()
+		return 1
+
+	return 0
+
+def view_image(url):
+	global screen, play_process, DEVNULL
+
+	# download to images directory
+	os.chdir(images_path)
+
+	try:
+
+		# build download commmand
+		command = "wget " + url + " -O image"
+		lex = shlex.shlex(command)
+		lex.whitespace_split = True
+		args = list(lex)
+
+		# download image
+		download_process = subprocess.Popen(args, stderr=DEVNULL)
+		download_process.wait()
+
+		# clear screen
+		screen.clear()
+		screen.refresh()
+
+		# build view command
+		command = view_command + " " + "image"
+		lex = shlex.shlex(command)
+		lex.whitespace_split = True
+		args = list(lex)
+
+		# view image
+		play_process = subprocess.Popen(args, stderr=DEVNULL)
+		play_process.wait()
+
+		set_status("finished viewing image")
+		play_process = None
+
+		restore_state()
+
+	except:
+
+		set_status("view image failed")
 		play_process = None
 
 		restore_state()
@@ -458,20 +512,47 @@ def handle_selection():
 
 	# get index into array
 	index = position + scroll
+
+	# get video id or url
+	video = None
 	if 'video' in data[index]:
 		video = data[index]['video']
-		if mode == 'twitch':
-			if data[index]['type'] == 'game':
-				load_twitch_streams(video)
-				return (0, 1)
-			else:
-				return (stream_video(video), 0)
-		elif mode != 'downloads':
-			download_video(video)
+
+	if mode == 'twitch':
+		if data[index]['type'] == 'game':
+			load_twitch_streams(video)
+			return (0, 1)
 		else:
-			return (play_video(video), 0)
+			return (stream_video(video), 0)
+	elif mode == 'downloads':
+		return (play_video(video), 0)
+	elif mode == 'youtube':
+		download_video(video)
+	else:
+
+		# check for video from reddit
+		if video != None:
+			download_video(video)
+		# might be an image
+		else:
+			url = data[index]['url']
+			content_type = get_content_type(url)
+			is_image = re.search("image/", content_type)
+			if is_image:
+				view_image(url)
+			else:
+				set_status("Not image or video")
 
 	return (0, 0)
+
+def get_content_type(url):
+	request = urllib.request.Request(url, method='HEAD')
+	response = urllib.request.urlopen(request)
+	match = re.search("content-type: (.*)", str(response.info()), re.IGNORECASE)
+	if match:
+		return match.group(1)
+	
+	return None
 
 def download_count():
 	global downloads, download_process
