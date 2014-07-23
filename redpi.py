@@ -536,6 +536,12 @@ def handle_selection():
 		# might be an image
 		else:
 			url = data[index]['url']
+
+			# attempt to fix bad imgur links
+			search = re.search("//imgur.com/(.*)", url)
+			if search:
+				url = "http://i.imgur.com/" + search.group(1) + ".jpg"
+		
 			content_type = get_content_type(url)
 			is_image = re.search("image/", content_type)
 			if is_image:
