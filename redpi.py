@@ -18,6 +18,7 @@ import re
 from socket import gethostbyname, gethostname
 from urllib.parse import quote, urlparse, parse_qs
 from urllib.request import urlopen
+from http.client import HTTPConnection
 
 # create cache directory
 cache_path = os.path.expanduser("~/.cache/redpi/")
@@ -552,13 +553,13 @@ def handle_selection():
 	return (0, 0)
 
 def get_content_type(url):
+	parsed = urlparse(url)
 	request = urllib.request.Request(url, method='HEAD')
-	response = urllib.request.urlopen(request)
-	match = re.search("content-type: (.*)", str(response.info()), re.IGNORECASE)
-	if match:
-		return match.group(1)
+	connection = HTTPConnection(parsed.netloc)
+	connection.request('HEAD', parsed.path + '?' + parsed.query)
+	response = connection.getresponse()
 	
-	return None
+	return response.getheader('content-type')
 
 def download_count():
 	global downloads, download_process
