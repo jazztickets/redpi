@@ -554,7 +554,6 @@ def handle_selection():
 
 def get_content_type(url):
 	parsed = urlparse(url)
-	request = urllib.request.Request(url, method='HEAD')
 	connection = HTTPConnection(parsed.netloc)
 	connection.request('HEAD', parsed.path + '?' + parsed.query)
 	response = connection.getresponse()
