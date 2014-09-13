@@ -14,6 +14,7 @@ import html.parser
 import http.server
 import threading
 import socketserver
+import logging
 import re
 from socket import gethostbyname, gethostname
 from urllib.parse import quote, urlparse, parse_qs
@@ -27,6 +28,9 @@ images_path = os.path.expanduser("~/.cache/redpi/images/")
 os.makedirs(cache_path, exist_ok=True)
 os.makedirs(files_path, exist_ok=True)
 os.makedirs(images_path, exist_ok=True)
+
+logging.basicConfig(filename=cache_path+'debug.log', level=logging.DEBUG, format='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
+logging.debug("starting redpi")
 
 hostname = ""
 port = 8080
@@ -358,6 +362,7 @@ def load_downloads():
 		mode_results['downloads'].append(data)
 		i += 1
 
+	clamp_cursor()
 	set_status(str(download_count()) + " download(s) in progress")
 
 def draw_results():
@@ -407,10 +412,12 @@ def play_video(file):
 		screen.clear()
 		screen.refresh()
 
+		logging.debug("playing " + file)
 		play_process = subprocess.Popen(args, stdout=DEVNULL, stderr=DEVNULL)
 		play_process.wait()
 
-		set_status("finished " + file)
+		logging.debug("finished playing " + file)
+		set_status("finished playing " + file)
 		play_process = None
 
 		restore_state()
@@ -571,6 +578,7 @@ def download_count():
 def download_video(video):
 	global downloads, play_process
 
+	logging.debug("appending download " + video)
 	downloads.append(video)
 	if play_process == None:
 		set_status(str(download_count()) + " download(s) in progress - adding " + video + " to queue")
@@ -578,21 +586,26 @@ def download_video(video):
 	restore_state()
 
 def process_download_queue():
-	global downloads, download_process
+	global downloads, download_process, menu_results
 
 	# check for existing download
 	if download_process != None:
 		download_process.poll()
 		if download_process.returncode != None:
 			download_process = None
+			logging.debug("finished download process")
 
 			# set status if nothing is playing
 			if play_process == None:
 				set_status(str(download_count()) + " download(s) in progress - download finished")
+				menu_results.erase()
+				load_downloads()
+				draw_results()
 	elif download_process == None and len(downloads) > 0:
 		
 		# get next download in queue
 		video = downloads.pop(0);
+		logging.debug("popping download queue " + video)
 
 		# run youtube-dl
 		os.chdir(files_path)
@@ -623,6 +636,19 @@ def handle_playall(screen):
 				return 1
 
 	return 0
+
+def clamp_cursor():
+	global position, scroll, mode_results, mode
+	#logging.debug("position = " + str(position))
+	#logging.debug("scroll = " + str(scroll))
+	#logging.debug("len(mode_results[mode]) = " + str(len(mode_results[mode])))
+	if position + scroll >= len(mode_results[mode]) - 1:
+		position = len(mode_results[mode]) - 1 - scroll
+		if position < 0:
+			scroll += position
+			position = 0
+			if scroll < 0:
+				scroll = 0
 
 def delete_selection():
 	if len(mode_results[mode]) == 0:
@@ -803,17 +829,14 @@ def main(stdscr):
 				redraw = 1
 		elif c == ord('r'):
 			if mode == 'reddit':
-				position = 0
-				scroll = 0
 				load_subreddit(subreddit, search, force=1)
 				menu_results.erase()
 				redraw = 1
 			elif mode == 'downloads':
 				menu_results.erase()
 				load_downloads()
-				position = 0
-				scroll = 0
 				redraw = 1
+			clamp_cursor()
 		elif c == curses.KEY_UP or c == ord('k'):
 			if position <= 0 and scroll > 0:
 				scroll -= 1
