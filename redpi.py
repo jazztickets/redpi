@@ -77,6 +77,7 @@ play_process = None
 menu_status = None
 menu_help = None
 scroll = 0
+current_dir = ""
 mode = 'downloads'
 max_y = 0
 max_x = 0
@@ -343,6 +344,30 @@ def load_twitch_streams(game):
 def load_downloads():
 	global mode_results
 
+	# list files in current path
+	browse_path = os.path.join(files_path, current_dir)
+	list = os.listdir(browse_path)
+	dirs = []
+	files = []
+
+	if current_dir != "":
+		dirs.append("..")
+
+	# create lists for dirs and files
+	for file in list:
+		path = os.path.join(browse_path, file)
+		if os.path.isdir(path):
+			dirs.append(file)
+		else:
+			files.append(file)
+
+	# sort lists
+	dirs.sort()
+	files.sort(key=lambda file: os.path.getctime(os.path.join(browse_path, file)))
+	
+	# merge dirs with files
+	files = dirs + files
+	
 	# build list of downloads
 	mode_results['downloads'] = []
 	i = 0
@@ -350,15 +375,21 @@ def load_downloads():
 	date_width = 19
 	title_width = max_x - (count_width+1) - (date_width+1)
 	template = "{0:%s} {1:%s} {2:%s}" % (count_width, title_width, date_width)
-	files = os.listdir(files_path)
-	files.sort(key=lambda file: os.path.getctime(files_path + file))
 	for file in files:
-		cdate = time.localtime(os.path.getctime(os.path.join(files_path, file)))
-		row = [str(i+1), file[:title_width], time.strftime("%Y-%m-%d %I:%M %p", cdate)]
 
 		data = {}
-		data['display'] = template.format(*row)
 		data['video'] = file
+		data['isdir'] = os.path.isdir(os.path.join(browse_path, file))
+		if file == '..':
+			data['isdir'] = True
+
+		cdate = time.localtime(os.path.getctime(os.path.join(browse_path, file)))
+		date_string = time.strftime("%Y-%m-%d %I:%M %p", cdate)
+		if data['isdir']:
+			date_string = ""
+		row = [str(i+1), file[:title_width], date_string]
+		
+		data['display'] = template.format(*row)
 		mode_results['downloads'].append(data)
 		i += 1
 
@@ -374,12 +405,20 @@ def draw_results():
 		i = 0
 		for row in mode_results[mode][scroll : scroll + max_display]:
 			color = 1
+
+			# partial downloads
 			if mode == 'downloads' and row['video'].endswith(".part"):
 				color = 3
-				if position == i:
-					color = 4
-			elif position == i:
-				color = 2
+
+			# directory
+			if 'isdir' in row and row['isdir']:
+				color = 5
+
+			# if selected set highlight color
+			if position == i:
+				color += 1
+
+			# draw row
 			menu_results.addstr(i, 0, row['display'], curses.color_pair(color))
 			i += 1
 			if i >= max_display:
@@ -510,6 +549,7 @@ def view_image(url):
 
 # returns status, redraw
 def handle_selection():
+	global current_dir
 
 	# get data array from results page
 	data = mode_results[mode]
@@ -533,7 +573,16 @@ def handle_selection():
 		else:
 			return (stream_video(video), 0)
 	elif mode == 'downloads':
-		return (play_video(video), 0)
+		if data[index]['isdir']:
+			current_dir = os.path.join(current_dir, video)
+			current_dir = os.path.relpath(os.path.abspath(files_path + current_dir), files_path)
+			if current_dir == ".":
+				current_dir = ""
+			load_downloads()
+			set_status(current_dir)
+			return (0, 1)
+		else:
+			return (play_video(os.path.join(current_dir, video)), 0)
 	elif mode == 'youtube':
 		download_video(video)
 	else:
@@ -651,12 +700,13 @@ def clamp_cursor():
 				scroll = 0
 
 def delete_selection():
+	global current_dir
 	if len(mode_results[mode]) == 0:
 		return
 
 	index = position + scroll
 	if mode == 'downloads':
-		file = os.path.join(files_path, mode_results[mode][index]['video'])
+		file = os.path.join(os.path.join(files_path, current_dir), mode_results[mode][index]['video'])
 		if os.path.isfile(file):
 			os.remove(file)
 
@@ -702,6 +752,8 @@ def main(stdscr):
 	curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)
 	curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_BLACK)
 	curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_RED)
+	curses.init_pair(5, curses.COLOR_GREEN, curses.COLOR_BLACK)
+	curses.init_pair(6, curses.COLOR_GREEN, curses.COLOR_RED)
 	
 	menu_results = curses.newpad(100, 300)
 	menu_status = curses.newpad(1, 300)
