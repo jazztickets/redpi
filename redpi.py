@@ -357,7 +357,8 @@ def load_downloads():
 	for file in list:
 		path = os.path.join(browse_path, file)
 		if os.path.isdir(path):
-			dirs.append(file)
+			if file[0] != ".":
+				dirs.append(file)
 		else:
 			files.append(file)
 
