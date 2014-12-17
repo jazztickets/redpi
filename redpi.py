@@ -320,23 +320,24 @@ def load_twitch_streams(game):
 	title_width = max_x - (count_width+1) - (viewers_width+1) - (name_width+1) - 0
 	template = "{0:%s} {1:%s} {2:%s} {3:%s}" % (count_width, title_width, name_width, viewers_width)
 	for item in children:
-		id = item['channel']['url']
-		if item['channel']['status'] != None:
-			title = item['channel']['status'][:title_width]
-		else:
-			title = item['channel']['display_name'][:title_width]
-		name = item['channel']['display_name'][:name_width]
-		viewers = str(item['viewers'])[:viewers_width]
+		if 'url' in item['channel']:
+			id = item['channel']['url']
+			if item['channel']['status'] != None:
+				title = item['channel']['status'][:title_width]
+			else:
+				title = item['channel']['display_name'][:title_width]
+			name = item['channel']['display_name'][:name_width]
+			viewers = str(item['viewers'])[:viewers_width]
 
-		# build row
-		row = [str(i+1), title, name, viewers]
+			# build row
+			row = [str(i+1), title, name, viewers]
 
-		data = {}
-		data['display'] = template.format(*row)
-		data['video'] = id
-		data['type'] = 'stream'
-		mode_results['twitch'].append(data)
-		i += 1
+			data = {}
+			data['display'] = template.format(*row)
+			data['video'] = id
+			data['type'] = 'stream'
+			mode_results['twitch'].append(data)
+			i += 1
 	
 	mode_status['twitch'] = "twitch.tv streams for " + game
 	set_status(mode_status['twitch'])
