@@ -61,9 +61,9 @@ if platform.machine()[:3] == "arm":
 	view_command = "fbi"
 	stream_player = "omxplayer --fifo"
 else:
-	play_command = "vlc -q"
+	play_command = "xdg-open"
 	view_command = "xdg-open"
-	stream_player = "vlc"
+	stream_player = ""
 
 stream_command = "livestreamer"
 DEVNULL = open(os.devnull, "w")
@@ -476,7 +476,10 @@ def stream_video(url):
 
 	os.chdir(files_path)
 	quality = "source"
-	command = stream_command + " " + url + " " + quality + " --player " + stream_player
+	command = stream_command + " " + url + " " + quality
+	if stream_player != "":
+		command = command + " --player " + stream_player
+
 	lex = shlex.shlex(command)
 	lex.whitespace_split = True
 	args = list(lex)
@@ -484,7 +487,14 @@ def stream_video(url):
 		screen.clear()
 		screen.refresh()
 
-		play_process = subprocess.Popen(args, stderr=DEVNULL)
+		play_process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		while True:
+			line = play_process.stdout.readline()
+			if not line:
+				break
+			set_status(line)
+			logging.debug(line)
+
 		play_process.wait()
 
 		set_status("finished stream")
@@ -719,7 +729,10 @@ def delete_selection():
 def set_status(text):
 	global menu_status
 	menu_status.erase()
-	menu_status.addstr(0, 0, text[:max_x], curses.A_BOLD)
+	try:
+		menu_status.addstr(0, 0, text[:max_x], curses.A_BOLD)
+	except curses.error:
+		pass
 	menu_status.noutrefresh(0, 0, max_y-1, 0, max_y-1, max_x-1)
 	curses.doupdate()
 
