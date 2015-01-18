@@ -487,6 +487,8 @@ def stream_video(url):
 		screen.clear()
 		screen.refresh()
 
+		set_status("starting stream")
+
 		play_process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		while True:
 			line = play_process.stdout.readline()
