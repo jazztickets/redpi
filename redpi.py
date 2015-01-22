@@ -53,7 +53,7 @@ mode_help = {
 	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch a: playall d: delete r: refresh q: quit",
 	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit /: search r: refresh q: quit",
 	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch /: search q: quit",
-	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games q: quit"
+	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh q: quit"
 }
 
 if platform.machine()[:3] == "arm":
@@ -79,6 +79,7 @@ menu_help = None
 scroll = 0
 current_dir = ""
 mode = 'downloads'
+sub_mode = ''
 max_y = 0
 max_x = 0
 html_parser = html.parser.HTMLParser()
@@ -289,8 +290,9 @@ def load_twitch_games():
 	mode_status['twitch'] = "twitch.tv games"
 	set_status(mode_status['twitch'])
 
-def load_twitch_streams(game):
-	global mode_results
+def load_twitch_streams():
+	global mode_results, sub_mode
+	game = sub_mode
 
 	set_status("loading twitch.tv streams for " + game)
 
@@ -563,7 +565,7 @@ def view_image(url):
 
 # returns status, redraw
 def handle_selection():
-	global current_dir
+	global current_dir, sub_mode
 
 	# get data array from results page
 	data = mode_results[mode]
@@ -582,7 +584,8 @@ def handle_selection():
 
 	if mode == 'twitch':
 		if data[index]['type'] == 'game':
-			load_twitch_streams(video)
+			sub_mode = video
+			load_twitch_streams()
 			return (0, 1)
 		else:
 			return (stream_video(video), 0)
@@ -904,6 +907,10 @@ def main(stdscr):
 			elif mode == 'downloads':
 				menu_results.erase()
 				load_downloads()
+				redraw = 1
+			elif mode == 'twitch':
+				menu_results.erase()
+				load_twitch_streams()
 				redraw = 1
 			clamp_cursor()
 		elif c == curses.KEY_UP or c == ord('k'):
