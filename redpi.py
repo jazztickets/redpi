@@ -496,7 +496,7 @@ def stream_video(url):
 			line = play_process.stdout.readline()
 			if not line:
 				break
-			set_status(line)
+			set_status(line.decode('utf-8'))
 			logging.debug(line)
 
 		play_process.wait()
