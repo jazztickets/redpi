@@ -794,6 +794,22 @@ def main(stdscr):
 			max_display = max_y - 4
 			menu_results.clear()
 			redraw = 1
+		elif c == 6 or c == 338:
+			# ^F or pagedown
+			for i in range(0, max_display-1):
+				if position >= max_display-1 and scroll < len(mode_results[mode]) - max_display:
+					scroll += 1
+				elif position + scroll < len(mode_results[mode]) - 1:
+					position += 1
+			redraw = 1
+		elif c == 2 or c == 339:
+			# ^B or pageup
+			for i in range(0, max_display-1):
+				if position <= 0 and scroll > 0:
+					scroll -= 1
+				elif position + scroll > 0:
+					position -= 1
+			redraw = 1
 		elif c == 10:
 			(status, redraw) = handle_selection()
 			if redraw == 1:
