@@ -752,7 +752,7 @@ def get_input(text, screen):
 	return input
 
 def main(stdscr):
-	global downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen
+	global downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen, sub_mode
 
 	ThreadedTCPServer.allow_reuse_address = True
 	server = ThreadedTCPServer((hostname, port), HttpHandler)
@@ -912,6 +912,7 @@ def main(stdscr):
 				position = 0
 				scroll = 0
 				search = ""
+				sub_mode = ""
 				load_twitch_games()
 				menu_results.erase()
 				redraw = 1
@@ -926,7 +927,10 @@ def main(stdscr):
 				redraw = 1
 			elif mode == 'twitch':
 				menu_results.erase()
-				load_twitch_streams()
+				if sub_mode == "":
+					load_twitch_games()
+				else:
+					load_twitch_streams()
 				redraw = 1
 			clamp_cursor()
 		elif c == curses.KEY_UP or c == ord('k'):
