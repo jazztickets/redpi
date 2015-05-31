@@ -82,6 +82,7 @@ mode = 'downloads'
 sub_mode = ''
 max_y = 0
 max_x = 0
+done = 0
 html_parser = html.parser.HTMLParser()
 
 class HttpHandler(http.server.BaseHTTPRequestHandler):
@@ -648,40 +649,44 @@ def download_video(video):
 	downloads.append(video)
 	if play_process == None:
 		set_status(str(download_count()) + " download(s) in progress - adding " + video + " to queue")
-	process_download_queue()
 	restore_state()
 
 def process_download_queue():
-	global downloads, download_process, menu_results
+	global done, downloads, download_process, menu_results
 
-	# check for existing download
-	if download_process != None:
-		download_process.poll()
-		if download_process.returncode != None:
-			download_process = None
-			logging.debug("finished download process")
+	# loop until program is finished
+	while not done:
+
+		# check for existing download
+		if download_process != None:
+			download_process.poll()
+			if download_process.returncode != None:
+				download_process = None
+				logging.debug("finished download process")
+
+				# set status if nothing is playing
+				if play_process == None:
+					set_status(str(download_count()) + " download(s) in progress - download finished")
+					menu_results.erase()
+					load_downloads()
+					draw_results()
+		elif download_process == None and len(downloads) > 0:
+			
+			# get next download in queue
+			video = downloads.pop(0);
+			logging.debug("popping download queue " + video)
+
+			# run youtube-dl
+			os.chdir(files_path)
+			command = "youtube-dl -q --restrict-filenames " + video
+			args = shlex.split(command)
+			download_process = subprocess.Popen(args)
 
 			# set status if nothing is playing
 			if play_process == None:
-				set_status(str(download_count()) + " download(s) in progress - download finished")
-				menu_results.erase()
-				load_downloads()
-				draw_results()
-	elif download_process == None and len(downloads) > 0:
-		
-		# get next download in queue
-		video = downloads.pop(0);
-		logging.debug("popping download queue " + video)
+				set_status(str(download_count()) + " download(s) in progress - downloading: " + video)
 
-		# run youtube-dl
-		os.chdir(files_path)
-		command = "youtube-dl -q --restrict-filenames " + video
-		args = shlex.split(command)
-		download_process = subprocess.Popen(args)
-
-		# set status if nothing is playing
-		if play_process == None:
-			set_status(str(download_count()) + " download(s) in progress - downloading: " + video)
+		time.sleep(1)
 
 def handle_playall(screen):
 
@@ -752,7 +757,7 @@ def get_input(text, screen):
 	return input
 
 def main(stdscr):
-	global downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen, sub_mode
+	global done, downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen, sub_mode
 
 	ThreadedTCPServer.allow_reuse_address = True
 	server = ThreadedTCPServer((hostname, port), HttpHandler)
@@ -760,6 +765,10 @@ def main(stdscr):
 	server_thread = threading.Thread(target=server.serve_forever)
 	server_thread.daemon = True
 	server_thread.start()
+
+	download_thread = threading.Thread(target=process_download_queue)
+	download_thread.daemon = True
+	download_thread.start()
 
 	subreddit = ""
 	search = ""
@@ -950,11 +959,10 @@ def main(stdscr):
 			draw_results()
 			draw_help()
 
-		# check download queue
-		process_download_queue()
-
 		curses.doupdate()
 
 	curses.endwin()
+	done = 1
+	download_thread.join()
 
 curses.wrapper(main)
