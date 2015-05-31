@@ -464,6 +464,7 @@ def play_video(file):
 		set_status("finished playing " + file)
 		play_process = None
 
+		load_downloads()
 		restore_state()
 	except:
 		set_status("playback failed")
