@@ -869,8 +869,10 @@ def main(stdscr):
 				delete_selection()
 				menu_results.erase()
 				load_downloads()
-				if scroll + max_display > len(mode_results[mode]):
-					scroll = len(mode_results[mode]) - max_display
+				update = len(mode_results[mode]) - (scroll + max_display)
+				if update < 0:
+					scroll += update
+					position -= update
 					if scroll < 0:
 						scroll = 0
 				if position >= len(mode_results[mode]):
