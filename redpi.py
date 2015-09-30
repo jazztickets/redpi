@@ -870,7 +870,7 @@ def main(stdscr):
 				menu_results.erase()
 				load_downloads()
 				update = len(mode_results[mode]) - (scroll + max_display)
-				if update < 0:
+				if update < 0 and len(mode_results[mode]) >= max_display:
 					scroll += update
 					position -= update
 					if scroll < 0:
