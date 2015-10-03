@@ -136,7 +136,7 @@ def load_youtube(search=""):
 		return
 
 	# get json object
-	json_str = response.readall().decode("utf-8")
+	json_str = response.read().decode("utf-8")
 	decoded = json.loads(json_str)
 
 	# get children
@@ -207,7 +207,7 @@ def load_subreddit(subreddit, search="", force=0):
 			set_status("request failed")
 			return
 
-		json_str = response.readall().decode("utf-8")
+		json_str = response.read().decode("utf-8")
 		decoded = json.loads(json_str)
 
 		# cache json file
@@ -261,7 +261,7 @@ def load_twitch_games():
 		return
 
 	# get json object
-	json_str = response.readall().decode("utf-8")
+	json_str = response.read().decode("utf-8")
 	decoded = json.loads(json_str)
 
 	# get children
@@ -309,7 +309,7 @@ def load_twitch_streams():
 		return
 
 	# get json object
-	json_str = response.readall().decode("utf-8")
+	json_str = response.read().decode("utf-8")
 	decoded = json.loads(json_str)
 
 	# get children
