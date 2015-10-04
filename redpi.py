@@ -32,8 +32,14 @@ os.makedirs(images_path, exist_ok=True)
 logging.basicConfig(filename=cache_path+'debug.log', level=logging.DEBUG, format='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 logging.debug("starting redpi")
 
-hostname = ""
 port = 8080
+if len(sys.argv) == 2:
+	try:
+		port = int(sys.argv[1])
+	except:
+		port = 8080
+
+hostname = ""
 
 mode_results = {
 	"downloads" : [],
