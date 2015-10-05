@@ -764,14 +764,16 @@ def get_input(text, screen):
 	return input
 
 def main(stdscr):
-	global done, downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen, sub_mode
+	global done, downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen, sub_mode, port
 
-	ThreadedTCPServer.allow_reuse_address = True
-	server = ThreadedTCPServer((hostname, port), HttpHandler)
+	server = None
+	if port != 0:
+		ThreadedTCPServer.allow_reuse_address = True
+		server = ThreadedTCPServer((hostname, port), HttpHandler)
 
-	server_thread = threading.Thread(target=server.serve_forever)
-	server_thread.daemon = True
-	server_thread.start()
+		server_thread = threading.Thread(target=server.serve_forever)
+		server_thread.daemon = True
+		server_thread.start()
 
 	download_thread = threading.Thread(target=process_download_queue)
 	download_thread.daemon = True
@@ -799,9 +801,10 @@ def main(stdscr):
 	load_downloads()
 	draw_results()
 	draw_help()
-	set_status("web server started on " + gethostbyname(gethostname()) + ":" + str(port))
-	curses.doupdate()
+	if server:
+		set_status("web server started on " + gethostbyname(gethostname()) + ":" + str(port))
 
+	curses.doupdate()
 	while True:
 		c = screen.getch()
 		redraw = 0
@@ -867,8 +870,9 @@ def main(stdscr):
 		elif c == ord('a'):
 			handle_playall(screen)
 		elif c == ord('q'):
-			server.shutdown()
-			server.server_close()
+			if server:
+				server.shutdown()
+				server.server_close()
 			break
 		elif c == ord('d'):
 			if mode == 'downloads':
