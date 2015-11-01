@@ -66,12 +66,15 @@ if platform.machine()[:3] == "arm":
 	play_command = "omxplayer"
 	view_command = "fbi"
 	stream_player = "omxplayer --fifo"
+	stream_command = "livestreamer"
+	stream_quality = "source"
 else:
 	play_command = "xdg-open"
 	view_command = "xdg-open"
 	stream_player = ""
+	stream_command = "mpv --af=drc"
+	stream_quality = ""
 
-stream_command = "livestreamer"
 DEVNULL = open(os.devnull, "w")
 position = 0
 expire_time = 600
@@ -482,11 +485,10 @@ def play_video(file):
 	return 0
 
 def stream_video(url):
-	global screen, play_process, DEVNULL
+	global screen, play_process, stream_quality, DEVNULL
 
 	os.chdir(files_path)
-	quality = "source"
-	command = stream_command + " " + url + " " + quality
+	command = stream_command + " " + url + " " + stream_quality
 	if stream_player != "":
 		command = command + " --player " + stream_player
 
