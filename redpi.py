@@ -59,7 +59,7 @@ mode_help = {
 	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch a: playall d: delete r: refresh q: quit",
 	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit /: search r: refresh q: quit",
 	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch /: search q: quit",
-	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh q: quit"
+	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh c: open chat q: quit"
 }
 
 if platform.machine()[:3] == "arm":
@@ -68,12 +68,14 @@ if platform.machine()[:3] == "arm":
 	stream_player = "omxplayer --fifo"
 	stream_command = "livestreamer"
 	stream_quality = "source"
+	stream_chat = False
 else:
 	play_command = "xdg-open"
 	view_command = "xdg-open"
 	stream_player = ""
 	stream_command = "mpv --af=drc"
 	stream_quality = ""
+	stream_chat = True
 
 DEVNULL = open(os.devnull, "w")
 position = 0
@@ -484,8 +486,8 @@ def play_video(file):
 
 	return 0
 
-def stream_video(url):
-	global screen, play_process, stream_quality, DEVNULL
+def stream_video(url, open_chat):
+	global screen, play_process, stream_quality, stream_chat, DEVNULL
 
 	os.chdir(files_path)
 	command = stream_command + " " + url + " " + stream_quality
@@ -500,6 +502,19 @@ def stream_video(url):
 		screen.refresh()
 
 		set_status("starting stream")
+
+		if stream_chat and open_chat:
+			chat_command = "xdg-open " + url + "/chat"
+			chat_lex = shlex.shlex(chat_command)
+			chat_lex.whitespace_split = True
+			chat_args = list(chat_lex)
+
+			chat_process = subprocess.Popen(chat_args, stderr=DEVNULL)
+			chat_process.wait()
+
+		lex = shlex.shlex(command)
+		lex.whitespace_split = True
+		args = list(lex)
 
 		play_process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		while True:
@@ -574,7 +589,7 @@ def view_image(url):
 	return 0
 
 # returns status, redraw
-def handle_selection():
+def handle_selection(open_chat=False):
 	global current_dir, sub_mode
 
 	# get data array from results page
@@ -598,7 +613,7 @@ def handle_selection():
 			load_twitch_streams()
 			return (0, 1)
 		else:
-			return (stream_video(video), 0)
+			return (stream_video(video, open_chat), 0)
 	elif mode == 'downloads':
 		if data[index]['isdir']:
 			current_dir = os.path.join(current_dir, video)
@@ -831,8 +846,12 @@ def main(stdscr):
 				elif position + scroll > 0:
 					position -= 1
 			redraw = 1
-		elif c == 10:
-			(status, redraw) = handle_selection()
+		elif c == 10 or c == ord('c'):
+			open_chat = False
+			if c == ord('c'):
+				open_chat = True
+
+			(status, redraw) = handle_selection(open_chat)
 			if redraw == 1:
 				menu_results.erase()
 				position = 0
