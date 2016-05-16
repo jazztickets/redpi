@@ -73,7 +73,7 @@ else:
 	play_command = "xdg-open"
 	view_command = "xdg-open"
 	stream_player = ""
-	stream_command = "mpv --af=drc"
+	stream_command = "mpv --af=drc --quiet"
 	stream_quality = ""
 	stream_chat = True
 
