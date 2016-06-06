@@ -52,11 +52,18 @@ mode_status = {
 	"downloads" : "",
 	"reddit" : "type s to select subreddit",
 	"youtube" : "type / to search youtube",
-	"twitch" : "" 
+	"twitch" : ""
+}
+
+mode_query = {
+	"downloads" : "",
+	"reddit" : "",
+	"youtube" : "",
+	"twitch" : ""
 }
 
 mode_help = {
-	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch a: playall d: delete r: refresh q: quit",
+	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch /: find a: playall d: delete r: refresh q: quit",
 	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit /: search r: refresh q: quit",
 	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch /: search q: quit",
 	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh c: open chat q: quit"
@@ -137,7 +144,7 @@ def load_youtube(search=""):
 
 	# build url
 	url = "https://www.googleapis.com/youtube/v3/search?key=AIzaSyDBtXPQRsI7Ny7JZ335nq-4VGLfOk4dSJI&type=video&part=snippet&maxResults=50&q=" + urllib.parse.quote(search)
-	
+
 	# get results
 	mode_results['youtube'] = []
 	request = urllib.request.Request(url)
@@ -175,7 +182,7 @@ def load_youtube(search=""):
 		data['video'] = id
 		mode_results['youtube'].append(data)
 		i += 1
-	
+
 	mode_status['youtube'] = "searched \"" + search + "\""
 	set_status(mode_status['youtube'])
 
@@ -207,9 +214,9 @@ def load_subreddit(subreddit, search="", force=0):
 	else:
 		status_string = "searched \"" + search + "\" in /r/" + subreddit
 		url = "http://www.reddit.com" + url_subreddit + "/search.json?limit=90&q=" + urllib.parse.quote(search) + "&restrict_sr=on"
-	
+
 	# load live page
-	if decoded == "": 
+	if decoded == "":
 		header = { 'User-Agent' : 'cool json bot' }
 		request = urllib.request.Request(url, headers=header)
 		try:
@@ -298,7 +305,7 @@ def load_twitch_games():
 		data['type'] = 'game'
 		mode_results['twitch'].append(data)
 		i += 1
-	
+
 	mode_status['twitch'] = "twitch.tv games"
 	set_status(mode_status['twitch'])
 
@@ -310,7 +317,7 @@ def load_twitch_streams():
 
 	# build url
 	url = "https://api.twitch.tv/kraken/streams?limit=100&game=" + urllib.parse.quote(game)
-	
+
 	# get results
 	mode_results['twitch'] = []
 	request = urllib.request.Request(url)
@@ -352,7 +359,7 @@ def load_twitch_streams():
 			data['type'] = 'stream'
 			mode_results['twitch'].append(data)
 			i += 1
-	
+
 	mode_status['twitch'] = "twitch.tv streams for " + game
 	set_status(mode_status['twitch'])
 
@@ -380,10 +387,10 @@ def load_downloads():
 	# sort lists
 	dirs.sort()
 	files.sort(key=lambda file: os.path.getctime(os.path.join(browse_path, file)))
-	
+
 	# merge dirs with files
 	files = dirs + files
-	
+
 	# build list of downloads
 	mode_results['downloads'] = []
 	i = 0
@@ -404,7 +411,7 @@ def load_downloads():
 		if data['isdir']:
 			date_string = ""
 		row = [str(i+1), file[:title_width], date_string]
-		
+
 		data['display'] = template.format(*row)
 		mode_results['downloads'].append(data)
 		i += 1
@@ -530,7 +537,7 @@ def stream_video(url, open_chat):
 		play_process = None
 
 		restore_state()
-		
+
 	except:
 
 		set_status("playback failed")
@@ -640,7 +647,7 @@ def handle_selection(open_chat=False):
 			search = re.search("//imgur.com/(.*)", url)
 			if search:
 				url = "http://i.imgur.com/" + search.group(1) + ".jpg"
-		
+
 			content_type = get_content_type(url)
 			is_image = re.search("image/", content_type)
 			if is_image:
@@ -650,12 +657,30 @@ def handle_selection(open_chat=False):
 
 	return (0, 0)
 
+def find_result(query, start_from):
+	data = mode_results[mode]
+	count = len(data)
+
+	index = start_from
+	for i in range(0, count):
+
+		if index >= count:
+			index = 0
+
+		match = re.search(re.escape(query), data[index]['video'], flags=re.IGNORECASE)
+		if match:
+			return index
+
+		index += 1
+
+	return -1
+
 def get_content_type(url):
 	parsed = urlparse(url)
 	connection = HTTPConnection(parsed.netloc)
 	connection.request('HEAD', parsed.path + '?' + parsed.query)
 	response = connection.getresponse()
-	
+
 	return response.getheader('content-type')
 
 def download_count():
@@ -663,7 +688,7 @@ def download_count():
 	count = len(downloads)
 	if download_process != None:
 		count += 1
-	
+
 	return count
 
 def download_video(video):
@@ -695,7 +720,7 @@ def process_download_queue():
 					load_downloads()
 					draw_results()
 		elif download_process == None and len(downloads) > 0:
-			
+
 			# get next download in queue
 			video = downloads.pop(0);
 			logging.debug("popping download queue " + video)
@@ -809,7 +834,7 @@ def main(stdscr):
 	curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_RED)
 	curses.init_pair(5, curses.COLOR_GREEN, curses.COLOR_BLACK)
 	curses.init_pair(6, curses.COLOR_GREEN, curses.COLOR_RED)
-	
+
 	menu_results = curses.newpad(100, 300)
 	menu_status = curses.newpad(1, 300)
 	menu_help = curses.newpad(1, 300)
@@ -927,14 +952,41 @@ def main(stdscr):
 				# get input
 				query = get_input("youtube: ", screen)
 
-				# load new subreddit
+				# load search results
 				if query != "":
 					position = 0
 					scroll = 0
 					load_youtube(query)
 					menu_results.erase()
 					redraw = 1
+			elif mode == 'downloads':
 
+				# get input
+				mode_query[mode] = get_input("find: ", screen)
+
+				# find item
+				if mode_query[mode] != "":
+					new_scroll = find_result(mode_query[mode], 0)
+					if new_scroll == -1:
+						set_status("not found")
+					else:
+						scroll = new_scroll
+
+					menu_results.erase()
+					redraw = 1
+
+		elif c == ord('n'):
+			if mode == 'downloads':
+
+				# find item
+				if mode_query[mode] != "":
+					position = 0
+					scroll = find_result(mode_query[mode], position + scroll + 1)
+					if scroll == -1:
+						set_status("not found")
+
+					menu_results.erase()
+					redraw = 1
 		elif c == ord('s'):
 			if mode == 'reddit':
 
