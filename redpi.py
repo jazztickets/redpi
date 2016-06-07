@@ -970,6 +970,7 @@ def main(stdscr):
 					if new_scroll == -1:
 						set_status("not found")
 					else:
+						position = 0
 						scroll = new_scroll
 
 					menu_results.erase()
@@ -980,10 +981,12 @@ def main(stdscr):
 
 				# find item
 				if mode_query[mode] != "":
-					position = 0
-					scroll = find_result(mode_query[mode], position + scroll + 1)
-					if scroll == -1:
+					new_scroll = find_result(mode_query[mode], position + scroll + 1)
+					if new_scroll == -1:
 						set_status("not found")
+					else:
+						position = 0
+						scroll = new_scroll
 
 					menu_results.erase()
 					redraw = 1
