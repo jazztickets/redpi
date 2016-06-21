@@ -406,10 +406,12 @@ def load_downloads():
 		if file == '..':
 			data['isdir'] = True
 
-		cdate = time.localtime(os.path.getctime(os.path.join(browse_path, file)))
-		date_string = time.strftime("%Y-%m-%d %I:%M %p", cdate)
-		if data['isdir']:
-			date_string = ""
+		full_path = os.path.join(browse_path, file)
+		date_string = ""
+		if os.path.isfile(full_path) and not data['isdir']:
+			cdate = time.localtime(os.path.getctime(full_path))
+			date_string = time.strftime("%Y-%m-%d %I:%M %p", cdate)
+
 		row = [str(i+1), file[:title_width], date_string]
 
 		data['display'] = template.format(*row)
