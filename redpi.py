@@ -74,7 +74,7 @@ if platform.machine()[:3] == "arm":
 	view_command = "fbi"
 	stream_player = "omxplayer --fifo"
 	stream_command = "livestreamer"
-	stream_quality = "source"
+	stream_quality = "best,1080p60"
 	stream_chat = False
 else:
 	play_command = "xdg-open"
