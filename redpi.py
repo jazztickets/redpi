@@ -32,6 +32,8 @@ os.makedirs(images_path, exist_ok=True)
 logging.basicConfig(filename=cache_path+'debug.log', level=logging.DEBUG, format='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 logging.debug("starting redpi")
 
+youtube_key = "AIzaSyDBtXPQRsI7Ny7JZ335nq-4VGLfOk4dSJI"
+
 port = 8080
 if len(sys.argv) == 2:
 	try:
@@ -65,7 +67,7 @@ mode_query = {
 mode_help = {
 	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch /: find a: playall d: delete r: refresh q: quit",
 	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit /: search r: refresh q: quit",
-	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch /: search q: quit",
+	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch c: channel /: search q: quit",
 	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh c: open chat q: quit"
 }
 
@@ -137,17 +139,10 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 	pass
 
-def load_youtube(search=""):
-	global mode_results
+def parse_youtube_api(url):
+	api_url = "https://www.googleapis.com/youtube/v3/search?key=" + youtube_key + "&" + url
 
-	set_status("searching youtube for \"" + search + "\"")
-
-	# build url
-	url = "https://www.googleapis.com/youtube/v3/search?key=AIzaSyDBtXPQRsI7Ny7JZ335nq-4VGLfOk4dSJI&type=video&part=snippet&maxResults=50&q=" + urllib.parse.quote(search)
-
-	# get results
-	mode_results['youtube'] = []
-	request = urllib.request.Request(url)
+	request = urllib.request.Request(api_url)
 	try:
 		response = urllib.request.urlopen(request)
 	except:
@@ -157,8 +152,26 @@ def load_youtube(search=""):
 	json_str = response.read().decode("utf-8")
 	decoded = json.loads(json_str)
 
-	# get children
-	children = decoded['items']
+	return decoded['items']
+
+def load_youtube(search="", channel=False):
+	global mode_results
+
+	set_status("searching youtube for \"" + search + "\"")
+
+	# build url
+	if channel:
+		url = "type=channel&part=id&maxResults=1&q=" + urllib.parse.quote(search)
+		children = parse_youtube_api(url)
+
+		channel_id = children[0]['id']['channelId']
+		url = "type=video&part=snippet&maxResults=50&channelId=" + channel_id + "&order=date"
+	else:
+		url = "type=video&part=snippet&maxResults=50&q=" + urllib.parse.quote(search)
+
+	# get results
+	mode_results['youtube'] = []
+	children = parse_youtube_api(url)
 
 	# build results
 	i = 0
@@ -874,15 +887,29 @@ def main(stdscr):
 					position -= 1
 			redraw = 1
 		elif c == 10 or c == ord('c'):
-			open_chat = False
-			if c == ord('c'):
-				open_chat = True
+			if mode == 'youtube' and c == ord('c'):
 
-			(status, redraw) = handle_selection(open_chat)
-			if redraw == 1:
-				menu_results.erase()
+				# get input
+				channel = get_input("channel: ", screen)
+
+				# load channel
 				position = 0
 				scroll = 0
+				search = ""
+				sub_mode = ""
+				load_youtube(channel, True)
+				menu_results.erase()
+				redraw = 1
+			else:
+				open_chat = False
+				if c == ord('c'):
+					open_chat = True
+
+				(status, redraw) = handle_selection(open_chat)
+				if redraw == 1:
+					menu_results.erase()
+					position = 0
+					scroll = 0
 		elif c == ord('1'):
 			mode = 'downloads'
 			load_downloads()
