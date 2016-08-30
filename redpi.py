@@ -67,7 +67,7 @@ mode_query = {
 mode_help = {
 	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch /: find a: playall d: delete r: refresh q: quit",
 	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit /: search r: refresh q: quit",
-	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch c: channel /: search q: quit",
+	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch c: channel /: search t: thumb q: quit",
 	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh c: open chat q: quit"
 }
 
