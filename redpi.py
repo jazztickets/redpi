@@ -185,6 +185,7 @@ def load_youtube(search="", channel=False):
 		title = item['snippet']['title'][:title_width]
 		channel = item['snippet']['channelTitle'][:channel_width]
 		published_at = item['snippet']['publishedAt']
+		thumbnail = item['snippet']['thumbnails']['high']['url']
 		tdate = time.strptime(published_at, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 		# build row
@@ -193,6 +194,7 @@ def load_youtube(search="", channel=False):
 		data = {}
 		data['display'] = template.format(*row)
 		data['video'] = id
+		data['thumbnail'] = thumbnail
 		mode_results['youtube'].append(data)
 		i += 1
 
@@ -610,6 +612,26 @@ def view_image(url):
 
 	return 0
 
+def show_thumbnail():
+	global current_dir, sub_mode
+
+	# get data array from results page
+	data = mode_results[mode]
+
+	# check for empty data
+	if len(data) == 0:
+		return (0, 0)
+
+	# get index into array
+	index = position + scroll
+
+	# get thumbnail url
+	thumbnail = None
+	if 'thumbnail' in data[index]:
+		thumbnail = data[index]['thumbnail']
+
+	view_image(thumbnail)
+
 # returns status, redraw
 def handle_selection(open_chat=False):
 	global current_dir, sub_mode
@@ -1005,6 +1027,9 @@ def main(stdscr):
 					menu_results.erase()
 					redraw = 1
 
+		elif c == ord('t'):
+			if mode == 'youtube':
+				show_thumbnail()
 		elif c == ord('n'):
 			if mode == 'downloads':
 
