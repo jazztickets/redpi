@@ -33,6 +33,7 @@ logging.basicConfig(filename=cache_path+'debug.log', level=logging.DEBUG, format
 logging.debug("starting redpi")
 
 youtube_key = "AIzaSyDBtXPQRsI7Ny7JZ335nq-4VGLfOk4dSJI"
+twitch_key = "oluqw7uf9dy4gad4vdrakqy38pz5vsj"
 
 port = 8080
 if len(sys.argv) == 2:
@@ -283,7 +284,7 @@ def load_twitch_games():
 	set_status("loading twitch.tv games")
 
 	# build url
-	url = "https://api.twitch.tv/kraken/games/top?limit=100"
+	url = "https://api.twitch.tv/kraken/games/top?limit=100&client_id=" + twitch_key
 
 	# get results
 	mode_results['twitch'] = []
@@ -331,7 +332,7 @@ def load_twitch_streams():
 	set_status("loading twitch.tv streams for " + game)
 
 	# build url
-	url = "https://api.twitch.tv/kraken/streams?limit=100&game=" + urllib.parse.quote(game)
+	url = "https://api.twitch.tv/kraken/streams?limit=100&client_id=" + twitch_key + "&game=" + urllib.parse.quote(game)
 
 	# get results
 	mode_results['twitch'] = []
