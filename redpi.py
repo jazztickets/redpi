@@ -66,7 +66,7 @@ mode_query = {
 }
 
 mode_help = {
-	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch /: find a: playall d: delete r: refresh q: quit",
+	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch /: find m: movie a: playall d: delete r: refresh q: quit",
 	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit /: search r: refresh q: quit",
 	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch c: channel /: search t: thumb q: quit",
 	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh c: open chat q: quit"
@@ -74,6 +74,7 @@ mode_help = {
 
 if platform.machine()[:3] == "arm":
 	play_command = "omxplayer"
+	movie_command = "pasuspender -- omxplayer -b -p -o hdmi -n 2"
 	view_command = "fbi"
 	stream_player = "omxplayer --fifo"
 	stream_command = "livestreamer"
@@ -81,6 +82,7 @@ if platform.machine()[:3] == "arm":
 	stream_chat = False
 else:
 	play_command = "xdg-open"
+	movie_command = "xdg-open"
 	view_command = "xdg-open"
 	stream_player = ""
 	stream_command = "mpv --af=drc --quiet"
@@ -482,11 +484,20 @@ def restore_state():
 	draw_results()
 	curses.halfdelay(10)
 
-def play_video(file):
+def play_video(file, movie_mode=False):
 	global screen, play_process, DEVNULL
 
 	os.chdir(files_path)
-	command = play_command + " \"" + file.replace("\"", "\\\"") + "\""
+
+	# start play command
+	if movie_mode:
+		command = movie_command
+	else:
+		command = play_command
+
+	# add file path
+	command += " \"" + file.replace("\"", "\\\"") + "\""
+
 	args = shlex.split(command)
 	try:
 		screen.clear()
@@ -634,7 +645,7 @@ def show_thumbnail():
 	view_image(thumbnail)
 
 # returns status, redraw
-def handle_selection(open_chat=False):
+def handle_selection(open_chat=False, movie_mode=False):
 	global current_dir, sub_mode
 
 	# get data array from results page
@@ -669,7 +680,7 @@ def handle_selection(open_chat=False):
 			set_status(current_dir)
 			return (0, 1)
 		else:
-			return (play_video(os.path.join(current_dir, video)), 0)
+			return (play_video(os.path.join(current_dir, video), movie_mode), 0)
 	elif mode == 'youtube':
 		download_video(video)
 	else:
@@ -909,7 +920,7 @@ def main(stdscr):
 				elif position + scroll > 0:
 					position -= 1
 			redraw = 1
-		elif c == 10 or c == ord('c'):
+		elif c == 10 or c == ord('c') or c == ord('m'):
 			if mode == 'youtube' and c == ord('c'):
 
 				# get input
@@ -928,7 +939,11 @@ def main(stdscr):
 				if c == ord('c'):
 					open_chat = True
 
-				(status, redraw) = handle_selection(open_chat)
+				movie_mode = False
+				if c == ord('m'):
+					movie_mode = True
+
+				(status, redraw) = handle_selection(open_chat, movie_mode)
 				if redraw == 1:
 					menu_results.erase()
 					position = 0
