@@ -697,12 +697,17 @@ def handle_selection(open_chat=False, movie_mode=False):
 			if search:
 				url = "http://i.imgur.com/" + search.group(1) + ".jpg"
 
+			# get content type of url
 			content_type = get_content_type(url)
-			is_image = re.search("image/", content_type)
-			if is_image:
-				view_image(url)
-			else:
-				set_status("Not image or video")
+			if content_type:
+
+				# view image
+				is_image = re.search("image/", content_type)
+				if is_image:
+					view_image(url)
+					return (0, 0)
+
+			set_status("Not image or video")
 
 	return (0, 0)
 
