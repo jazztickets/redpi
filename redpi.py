@@ -117,6 +117,8 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 		s.send_header("Content-type", "text/html")
 		s.end_headers()
 	def do_GET(s):
+		global menu_results, position, scroll
+
 		s.send_response(200)
 		s.send_header("Content-type", "text/html")
 		s.end_headers()
@@ -138,6 +140,20 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 				download_video(video)
 		elif path == "/test":
 			set_status("test button hit from " + client_string)
+		elif path == "/command":
+			action = query['action'][0]
+			if action == "up":
+				go_up()
+			elif action == "down":
+				go_down()
+			elif action == "enter":
+				(status, redraw) = handle_selection(False, False)
+				if redraw == 1:
+					menu_results.erase()
+					position = 0
+					scroll = 0
+					draw_results()
+					draw_help()
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 	pass
@@ -859,6 +875,28 @@ def get_input(text, screen):
 
 	return input
 
+def go_up():
+	global position, scroll
+
+	if position <= 0 and scroll > 0:
+		scroll -= 1
+	elif position + scroll > 0:
+		position -= 1
+
+	draw_results()
+	draw_help()
+
+def go_down():
+	global position, scroll, max_display, mode_results
+
+	if position >= max_display-1 and scroll < len(mode_results[mode]) - max_display:
+		scroll += 1
+	elif position + scroll < len(mode_results[mode]) - 1:
+		position += 1
+
+	draw_results()
+	draw_help()
+
 def main(stdscr):
 	global done, downloads, position, mode, max_x, max_y, scroll, menu_status, menu_results, menu_help, max_display, screen, sub_mode, port
 
@@ -1107,17 +1145,9 @@ def main(stdscr):
 				redraw = 1
 			clamp_cursor()
 		elif c == curses.KEY_UP or c == ord('k'):
-			if position <= 0 and scroll > 0:
-				scroll -= 1
-			elif position + scroll > 0:
-				position -= 1
-			redraw = 1
+			go_up()
 		elif c == curses.KEY_DOWN or c == ord('j'):
-			if position >= max_display-1 and scroll < len(mode_results[mode]) - max_display:
-				scroll += 1
-			elif position + scroll < len(mode_results[mode]) - 1:
-				position += 1
-			redraw = 1
+			go_down()
 
 		if redraw:
 			draw_results()
