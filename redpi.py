@@ -140,8 +140,13 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 			s.wfile.write(str.encode(content))
 			return
 
+		# send header
+		s.send_response(200)
+		s.send_header("Content-type", "text/html")
+		s.end_headers()
+
 		# choose action
-		elif path == "/download":
+		if path == "/download":
 			url = re.search("(https?://.+)", query['url'][0])
 			if url:
 				video = url.group(1)
@@ -173,10 +178,6 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 				go_change_screen('youtube')
 			elif action == "twitch":
 				go_change_screen('twitch')
-
-		s.send_response(200)
-		s.send_header("Content-type", "text/html")
-		s.end_headers()
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 	pass
