@@ -112,33 +112,42 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 
 	def log_message(self, format, *args):
 		pass
+
 	def do_HEAD(s):
 		s.send_response(200)
 		s.send_header("Content-type", "text/html")
 		s.end_headers()
+
 	def do_GET(s):
 		global menu_results, position, scroll
-
-		s.send_response(200)
-		s.send_header("Content-type", "text/html")
-		s.end_headers()
-
-		# get client info
-		client_host, client_port = s.client_address
-		client_string = client_host + ":" + str(client_port)
 
 		# parse url
 		url_data = urlparse(s.path)
 		path = url_data.path
 		query = parse_qs(url_data.query)
 
+		# show web controls
+		if path == "/":
+			with open('index.html', 'r') as infile:
+				content = infile.read()
+
+			s.send_response(200)
+			s.send_header("Content-type", "text/html")
+			s.send_header("Content-Length", len(content))
+			s.end_headers()
+			s.wfile.write(str.encode(content))
+			return
+
 		# choose action
-		if path == "/download":
+		elif path == "/download":
 			url = re.search("(https?://.+)", query['url'][0])
 			if url:
 				video = url.group(1)
 				download_video(video)
 		elif path == "/test":
+			client_host, client_port = s.client_address
+			client_string = client_host + ":" + str(client_port)
+
 			set_status("test button hit from " + client_string)
 		elif path == "/command":
 			action = query['action'][0]
@@ -154,6 +163,18 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 					scroll = 0
 					draw_results()
 					draw_help()
+			elif action == "downloads":
+				go_change_screen('downloads')
+			elif action == "reddit":
+				go_change_screen('reddit')
+			elif action == "youtube":
+				go_change_screen('youtube')
+			elif action == "twitch":
+				go_change_screen('twitch')
+
+		s.send_response(200)
+		s.send_header("Content-type", "text/html")
+		s.end_headers()
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 	pass
@@ -875,6 +896,25 @@ def get_input(text, screen):
 
 	return input
 
+def go_change_screen(screen):
+	global mode, mode_results, mode_status, position, scroll
+
+	mode = screen
+	if screen == 'downloads':
+		load_downloads()
+	elif screen == 'twitch':
+		if len(mode_results[mode]) == 0:
+			load_twitch_games()
+
+	menu_results.erase()
+	if mode_status[mode] != "":
+		set_status(mode_status[mode])
+
+	position = 0
+	scroll = 0
+	draw_results()
+	draw_help()
+
 def go_up():
 	global position, scroll
 
@@ -992,37 +1032,13 @@ def main(stdscr):
 					position = 0
 					scroll = 0
 		elif c == ord('1'):
-			mode = 'downloads'
-			load_downloads()
-			menu_results.erase()
-			position = 0
-			scroll = 0
-			redraw = 1
+			go_change_screen('downloads')
 		elif c == ord('2'):
-			mode = 'reddit'
-			menu_results.erase()
-			position = 0
-			scroll = 0
-			set_status(mode_status[mode])
-			redraw = 1
+			go_change_screen('reddit')
 		elif c == ord('3'):
-			mode = 'youtube'
-			menu_results.erase()
-			position = 0
-			scroll = 0
-			set_status(mode_status[mode])
-			redraw = 1
+			go_change_screen('youtube')
 		elif c == ord('4'):
-			mode = 'twitch'
-			menu_results.erase()
-			position = 0
-			scroll = 0
-
-			# load games by default
-			if len(mode_results[mode]) == 0:
-				load_twitch_games()
-			set_status(mode_status[mode])
-			redraw = 1
+			go_change_screen('twitch')
 		elif c == ord('a'):
 			handle_playall(screen)
 		elif c == ord('q'):

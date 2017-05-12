@@ -1,0 +1,72 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>redpi</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<style>
+			.bottom_container {
+				position: fixed;
+				bottom: 0;
+				width: 100%
+			}
+			.menu button {
+				width: 75px;
+				height: 50px;
+				margin: 0px;
+			}
+			.center {
+				text-align: center;
+			}
+			button {
+				width: 125px;
+				height: 75px;
+				margin: 5px;
+			}
+			#enter {
+				width: 100px;
+				height: 50px;
+				margin: 5px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="menu center">
+			<button id="downloads" value="downloads">downloads</button>
+			<button id="reddit" value="reddit">reddit</button>
+			<button id="youtube" value="youtube">youtube</button>
+			<button id="twitch" value="twitch">twitch</button>
+		</div>
+		<div class="bottom_container">
+			<div class="center">
+				<button id="up" value="up">up</button>
+			</div>
+			<div class="center">
+				<button id="enter" value="enter">enter</button>
+			</div>
+			<div class="center">
+				<button id="down" value="down">down</button>
+			</div>
+		</div>
+	</body>
+	<script>
+		window.onload = function() {
+			document.getElementById("downloads").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("reddit").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("youtube").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("twitch").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("up").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("down").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("enter").addEventListener("click", function(e) { send(this) }, false);
+		}
+
+		function send(node) {
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+				if(this.readyState == 4 && this.status == 200) {
+				}
+			};
+			xhttp.open("GET", "/command?action=" + node.value, true);
+			xhttp.send();
+		}
+	</script>
+</html>
