@@ -591,7 +591,7 @@ def stream_video(url, open_chat):
 		lex.whitespace_split = True
 		args = list(lex)
 
-		play_process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		play_process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		while True:
 			line = play_process.stdout.readline()
 			if not line:
