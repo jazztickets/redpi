@@ -21,6 +21,8 @@ from urllib.parse import quote, urlparse, parse_qs
 from urllib.request import urlopen
 from http.client import HTTPConnection
 
+script_path = os.path.dirname(os.path.realpath(__file__))
+
 # create cache directory
 cache_path = os.path.expanduser("~/.cache/redpi/")
 files_path = os.path.expanduser("~/.cache/redpi/files/")
@@ -119,7 +121,7 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 		s.end_headers()
 
 	def do_GET(s):
-		global menu_results, position, scroll
+		global script_path, play_process, menu_results, position, scroll
 
 		# parse url
 		url_data = urlparse(s.path)
@@ -128,7 +130,7 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 
 		# show web controls
 		if path == "/":
-			with open('index.html', 'r') as infile:
+			with open(script_path + '/index.html', 'r') as infile:
 				content = infile.read()
 
 			s.send_response(200)
@@ -589,7 +591,7 @@ def stream_video(url, open_chat):
 		lex.whitespace_split = True
 		args = list(lex)
 
-		play_process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		play_process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		while True:
 			line = play_process.stdout.readline()
 			if not line:
