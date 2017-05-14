@@ -1043,7 +1043,8 @@ def main(stdscr):
 		elif c == ord('4'):
 			go_change_screen('twitch')
 		elif c == ord('a'):
-			handle_playall(screen)
+			if mode == 'downloads':
+				handle_playall(screen)
 		elif c == ord('q'):
 			if server:
 				server.shutdown()
