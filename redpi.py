@@ -80,7 +80,7 @@ if platform.machine()[:3] == "arm":
 	view_command = "fbi"
 	stream_player = "omxplayer --fifo"
 	stream_command = "livestreamer"
-	stream_quality = "1080p60"
+	stream_quality = "1080p60,best"
 	stream_chat = False
 else:
 	play_command = "xdg-open"
@@ -436,11 +436,15 @@ def load_downloads():
 	# create lists for dirs and files
 	for file in list:
 		path = os.path.join(browse_path, file)
-		if os.path.isdir(path):
-			if file[0] != ".":
-				dirs.append(file)
-		else:
-			files.append(file)
+		try:
+			os.stat(path)
+			if os.path.isdir(path):
+				if file[0] != ".":
+					dirs.append(file)
+			else:
+				files.append(file)
+		except:
+			pass
 
 	# sort lists
 	dirs.sort()
