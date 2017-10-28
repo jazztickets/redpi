@@ -87,7 +87,7 @@ else:
 	movie_command = "xdg-open"
 	view_command = "xdg-open"
 	stream_player = ""
-	stream_command = "mpv --af=acompressor --quiet"
+	stream_command = "mpv --af=acompressor=32 --quiet"
 	stream_quality = ""
 	stream_chat = True
 
