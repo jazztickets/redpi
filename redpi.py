@@ -584,7 +584,7 @@ def stream_video(url, open_chat):
 		set_status("starting stream")
 
 		if stream_chat and open_chat:
-			chat_command = "xdg-open " + url + "/chat"
+			chat_command = "xdg-open " + url + "/chat?darkpopout"
 			chat_lex = shlex.shlex(chat_command)
 			chat_lex.whitespace_split = True
 			chat_args = list(chat_lex)
