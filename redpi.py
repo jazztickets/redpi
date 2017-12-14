@@ -825,7 +825,7 @@ def process_download_queue():
 
 			# run youtube-dl
 			os.chdir(files_path)
-			command = "youtube-dl -q --restrict-filenames -f \"best[ext=mp4]\" -- " + video
+			command = "youtube-dl -q --restrict-filenames -f \"bestvideo[height<=1080][ext=mp4][fps<=60]+bestaudio[ext=m4a]/best[ext=mp4]\" -- " + video
 			args = shlex.split(command)
 			download_process = subprocess.Popen(args)
 
