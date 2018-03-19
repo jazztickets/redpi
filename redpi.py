@@ -448,7 +448,10 @@ def load_downloads():
 
 	# sort lists
 	dirs.sort()
-	files.sort(key=lambda file: os.path.getctime(os.path.join(browse_path, file)))
+	try:
+		files.sort(key=lambda file: os.path.getmtime(os.path.join(browse_path, file)))
+	except:
+		pass
 
 	# merge dirs with files
 	files = dirs + files
