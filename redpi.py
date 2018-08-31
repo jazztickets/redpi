@@ -74,6 +74,15 @@ mode_help = {
 	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh c: open chat q: quit"
 }
 
+dbus_commands = {
+	"stop" : "stop",
+	"pause" : "pause",
+	"left" : "seek -5000000",
+	"right" : "seek 5000000",
+	"up" : "seek -30000000",
+	"down" : "seek 30000000",
+}
+
 if platform.machine()[:3] == "arm":
 	play_command = "omxplayer"
 	movie_command = "pasuspender -- omxplayer -b -p -o hdmi -n 2"
@@ -121,7 +130,7 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 		s.end_headers()
 
 	def do_GET(s):
-		global script_path, play_process, menu_results, position, scroll
+		global script_path, play_process, menu_results, position, scroll, dbus_commands
 
 		# parse url
 		url_data = urlparse(s.path)
@@ -158,26 +167,31 @@ class HttpHandler(http.server.BaseHTTPRequestHandler):
 			set_status("test button hit from " + client_string)
 		elif path == "/command":
 			action = query['action'][0]
-			if action == "up":
-				go_up()
-			elif action == "down":
-				go_down()
-			elif action == "enter":
-				(status, redraw) = handle_selection(False, False)
-				if redraw == 1:
-					menu_results.erase()
-					position = 0
-					scroll = 0
-					draw_results()
-					draw_help()
-			elif action == "downloads":
-				go_change_screen('downloads')
-			elif action == "reddit":
-				go_change_screen('reddit')
-			elif action == "youtube":
-				go_change_screen('youtube')
-			elif action == "twitch":
-				go_change_screen('twitch')
+			if play_process == None:
+				if action == "up":
+					go_up()
+				elif action == "down":
+					go_down()
+				elif action == "enter":
+					(status, redraw) = handle_selection(False, False)
+					if redraw == 1:
+						menu_results.erase()
+						position = 0
+						scroll = 0
+						draw_results()
+						draw_help()
+				elif action == "downloads":
+					go_change_screen('downloads')
+				elif action == "reddit":
+					go_change_screen('reddit')
+				elif action == "youtube":
+					go_change_screen('youtube')
+				elif action == "twitch":
+					go_change_screen('twitch')
+			else:
+				if action in dbus_commands:
+					dbus_command = dbus_commands[action]
+					code = subprocess.call(script_path + "/dbuscontrol.sh " + dbus_command, shell=True)
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 	pass

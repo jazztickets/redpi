@@ -13,16 +13,27 @@
 				width: 75px;
 				height: 50px;
 				margin: 0px;
+				padding: 0px;
 			}
 			.center {
 				text-align: center;
 			}
 			button {
-				width: 125px;
+				width: 100px;
 				height: 75px;
 				margin: 5px;
 			}
 			#enter {
+				width: 100px;
+				height: 50px;
+				margin: 5px;
+			}
+			#stop {
+				width: 100px;
+				height: 50px;
+				margin: 5px;
+			}
+			#pause {
 				width: 100px;
 				height: 50px;
 				margin: 5px;
@@ -41,10 +52,14 @@
 				<button id="up" value="up">up</button>
 			</div>
 			<div class="center">
+				<button id="left" value="left">left</button>
 				<button id="enter" value="enter">enter</button>
+				<button id="right" value="right">right</button>
 			</div>
 			<div class="center">
+				<button id="stop" value="stop">stop</button>
 				<button id="down" value="down">down</button>
+				<button id="pause" value="pause">pause</button>
 			</div>
 		</div>
 	</body>
@@ -56,7 +71,11 @@
 			document.getElementById("twitch").addEventListener("click", function(e) { send(this) }, false);
 			document.getElementById("up").addEventListener("click", function(e) { send(this) }, false);
 			document.getElementById("down").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("left").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("right").addEventListener("click", function(e) { send(this) }, false);
 			document.getElementById("enter").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("stop").addEventListener("click", function(e) { send(this) }, false);
+			document.getElementById("pause").addEventListener("click", function(e) { send(this) }, false);
 		}
 
 		function send(node) {
