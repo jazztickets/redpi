@@ -463,7 +463,10 @@ def load_downloads():
 	# sort lists
 	dirs.sort()
 	try:
-		files.sort(key=lambda file: os.path.getmtime(os.path.join(browse_path, file)))
+		if current_dir == "":
+			files.sort(key=lambda file: os.path.getmtime(os.path.join(browse_path, file)))
+		else:
+			files.sort()
 	except:
 		pass
 
