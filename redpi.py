@@ -325,7 +325,7 @@ def load_subreddit(subreddit, search="", force=0):
 		row = [str(i+1), score, title, domain]
 		data = {}
 		data['display'] = template.format(*row)
-		if media != None and 'oembed' in media and media['oembed']['type'] == "video":
+		if media != None and 'reddit_video' in media:
 			data['video'] = item['data']['url']
 		data['url'] = item['data']['url']
 		mode_results['reddit'].append(data)
