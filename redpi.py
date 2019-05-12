@@ -69,7 +69,7 @@ mode_query = {
 
 mode_help = {
 	"downloads" : "1: downloads 2: reddit 3: youtube 4. twitch /: find m: movie a: playall d: delete r: refresh q: quit",
-	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit /: search r: refresh q: quit",
+	"reddit" : "1: downloads 2: reddit 3: youtube 4. twitch s: subreddit o: sort /: search r: refresh q: quit",
 	"youtube" : "1: downloads 2: reddit 3: youtube 4. twitch c: channel /: search t: thumb q: quit",
 	"twitch" : "1: downloads 2: reddit 3: youtube 4. twitch g: games r: refresh c: open chat q: quit"
 }
@@ -117,7 +117,6 @@ sub_mode = ''
 max_y = 0
 max_x = 0
 done = 0
-html_parser = html.parser.HTMLParser()
 
 class HttpHandler(http.server.BaseHTTPRequestHandler):
 
@@ -258,10 +257,19 @@ def load_youtube(search="", channel=False):
 	mode_status['youtube'] = "searched \"" + search + "\""
 	set_status(mode_status['youtube'])
 
-def load_subreddit(subreddit, search="", force=0):
+def load_subreddit(subreddit, search="", sort="", force=0):
 	global expired_time, mode_results
 	cache_file = cache_path + subreddit + ".json"
 	status_string = ""
+
+	# handle sorting
+	sort_type = ""
+	sort_amount = ""
+	if sort != "":
+		sort_tokens = str.split(sort)
+		sort_type = sort_tokens[0]
+		if len(sort_tokens) > 1:
+			sort_amount = sort_tokens[1]
 
 	# load cached results
 	mode_results['reddit'] = []
@@ -269,20 +277,25 @@ def load_subreddit(subreddit, search="", force=0):
 	if subreddit == "":
 		url_subreddit = "/"
 	else:
-		url_subreddit = "/r/" + subreddit
+		url_subreddit = "/r/" + subreddit + "/"
 
 	if search == "":
+		url_subreddit += sort_type
+
 		set_status("loading /r/" + subreddit)
 		if force == 0 and os.path.isfile(cache_file) and time.time() - os.path.getmtime(cache_file) <= expire_time:
 			status_string = "/r/" + subreddit + " from cache"
 			with open(cache_file, "r") as file_in:
 				decoded = json.load(file_in)
 		else:
+			url = "http://www.reddit.com" + url_subreddit + ".json?limit=90"
+			if sort_amount != "":
+				url += "&sort=top&t=" + sort_amount
+
 			if subreddit == "":
 				status_string = "reddit frontpage"
 			else:
 				status_string = "/r/" + subreddit
-			url = "http://www.reddit.com" + url_subreddit + ".json?limit=90"
 	else:
 		status_string = "searched \"" + search + "\" in /r/" + subreddit
 		url = "http://www.reddit.com" + url_subreddit + "/search.json?limit=90&q=" + urllib.parse.quote(search) + "&restrict_sr=on"
@@ -311,12 +324,16 @@ def load_subreddit(subreddit, search="", force=0):
 	# build results
 	i = 0
 	count_width = 2
-	vote_width = 5
+	vote_width = 6
 	domain_width = 20
 	title_width = max_x - (count_width+1) - (vote_width+1) - (domain_width+1) - 0
 	template = "{0:%s} {1:%s} {2:%s} {3:%s}" % (count_width, vote_width, title_width, domain_width)
 	for item in children:
-		title = html_parser.unescape(item['data']['title'][:title_width].replace('\r\n', ''))
+		title_key = 'title'
+		if title_key not in item['data']:
+			title_key = 'link_title'
+
+		title = html.unescape(item['data'][title_key][:title_width].replace('\r\n', ''))
 		url = item['data']['url']
 		score = str(item['data']['ups'] -  item['data']['downs'])[:vote_width]
 		domain = item['data']['domain'][:domain_width]
@@ -982,6 +999,7 @@ def main(stdscr):
 
 	subreddit = ""
 	search = ""
+	sort = ""
 	screen = curses.initscr()
 	curses.curs_set(0)
 
@@ -1173,7 +1191,7 @@ def main(stdscr):
 				redraw = 1
 		elif c == ord('r'):
 			if mode == 'reddit':
-				load_subreddit(subreddit, search, force=1)
+				load_subreddit(subreddit, search, sort, force=1)
 				menu_results.erase()
 				redraw = 1
 			elif mode == 'downloads':
@@ -1188,6 +1206,18 @@ def main(stdscr):
 					load_twitch_streams()
 				redraw = 1
 			clamp_cursor()
+		elif c == ord('o'):
+			if mode == 'reddit':
+
+				# get input
+				sort = get_input("sort: ", screen)
+
+				# load subreddit with sort type
+				position = 0
+				scroll = 0
+				load_subreddit(subreddit, search, sort, 1)
+				menu_results.erase()
+				redraw = 1
 		elif c == curses.KEY_UP or c == ord('k'):
 			go_up()
 		elif c == curses.KEY_DOWN or c == ord('j'):
