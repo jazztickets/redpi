@@ -357,11 +357,13 @@ def load_twitch_games():
 	set_status("loading twitch.tv games")
 
 	# build url
-	url = "https://api.twitch.tv/kraken/games/top?limit=100&client_id=" + twitch_key
+	url = "https://api.twitch.tv/kraken/games/top?limit=100"
 
 	# get results
 	mode_results['twitch'] = []
 	request = urllib.request.Request(url)
+	request.add_header('Accept', 'application/vnd.twitchtv.v5+json')
+	request.add_header('Client-ID', twitch_key)
 	try:
 		response = urllib.request.urlopen(request)
 	except:
@@ -405,11 +407,13 @@ def load_twitch_streams():
 	set_status("loading twitch.tv streams for " + game)
 
 	# build url
-	url = "https://api.twitch.tv/kraken/streams?limit=100&client_id=" + twitch_key + "&game=" + urllib.parse.quote(game)
+	url = "https://api.twitch.tv/kraken/streams?limit=100&game=" + urllib.parse.quote(game)
 
 	# get results
 	mode_results['twitch'] = []
 	request = urllib.request.Request(url)
+	request.add_header('Accept', 'application/vnd.twitchtv.v5+json')
+	request.add_header('Client-ID', twitch_key)
 	try:
 		response = urllib.request.urlopen(request)
 	except:
