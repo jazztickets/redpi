@@ -34,7 +34,7 @@ os.makedirs(images_path, exist_ok=True)
 logging.basicConfig(filename=cache_path+'debug.log', level=logging.DEBUG, format='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p')
 logging.debug("starting redpi")
 
-youtube_key = "AIzaSyDBtXPQRsI7Ny7JZ335nq-4VGLfOk4dSJI"
+youtube_key = "AIzaSyCIIqfbeiF6nSaP_G17yMVUTMggofq4Eds"
 twitch_key = "oluqw7uf9dy4gad4vdrakqy38pz5vsj"
 
 port = 8080
