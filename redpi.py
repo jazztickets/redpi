@@ -207,6 +207,8 @@ def parse_youtube_api(url):
 	# get json object
 	json_str = response.read().decode("utf-8")
 	decoded = json.loads(json_str)
+	if "items" not in decoded:
+		return None
 
 	return decoded['items']
 
@@ -219,6 +221,9 @@ def load_youtube(search="", channel=False):
 	if channel:
 		url = "type=channel&part=id&maxResults=1&q=" + urllib.parse.quote(search)
 		children = parse_youtube_api(url)
+		if children == None:
+			set_status("bad response from youtube api")
+			return
 
 		channel_id = children[0]['id']['channelId']
 		url = "type=video&part=snippet&maxResults=50&channelId=" + channel_id + "&order=date"
@@ -228,6 +233,9 @@ def load_youtube(search="", channel=False):
 	# get results
 	mode_results['youtube'] = []
 	children = parse_youtube_api(url)
+	if children == None:
+		set_status("bad response from youtube api")
+		return
 
 	# build results
 	i = 0
