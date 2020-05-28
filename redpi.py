@@ -250,7 +250,7 @@ def load_youtube(search="", channel=False):
 		channel = item['snippet']['channelTitle'][:channel_width]
 		published_at = item['snippet']['publishedAt']
 		thumbnail = item['snippet']['thumbnails']['high']['url']
-		tdate = time.strptime(published_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+		tdate = time.strptime(published_at, "%Y-%m-%dT%H:%M:%SZ")
 
 		# build row
 		row = [str(i+1), title, channel, time.strftime("%m-%d-%Y", tdate)]
