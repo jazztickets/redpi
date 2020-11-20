@@ -95,9 +95,9 @@ else:
 	play_command = "xdg-open"
 	movie_command = "xdg-open"
 	view_command = "xdg-open"
-	stream_player = ""
-	stream_command = "mpv --af=acompressor=10 --quiet"
-	stream_quality = ""
+	stream_player = "\"mpv --af=acompressor=10 --quiet\""
+	stream_command = "streamlink --twitch-disable-ads"
+	stream_quality = "best"
 	stream_chat = True
 
 DEVNULL = open(os.devnull, "w")
@@ -621,11 +621,8 @@ def stream_video(url, open_chat):
 	os.chdir(files_path)
 	command = stream_command + " " + url + " " + stream_quality
 	if stream_player != "":
-		command = command + " --player " + stream_player
+		command = command + " --player=" + stream_player
 
-	lex = shlex.shlex(command)
-	lex.whitespace_split = True
-	args = list(lex)
 	try:
 		screen.clear()
 		screen.refresh()
@@ -641,10 +638,7 @@ def stream_video(url, open_chat):
 			chat_process = subprocess.Popen(chat_args, stderr=DEVNULL)
 			chat_process.wait()
 
-		lex = shlex.shlex(command)
-		lex.whitespace_split = True
-		args = list(lex)
-
+		args = shlex.split(command)
 		play_process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		while True:
 			line = play_process.stdout.readline()
