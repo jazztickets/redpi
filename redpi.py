@@ -96,7 +96,7 @@ else:
 	movie_command = "xdg-open"
 	view_command = "xdg-open"
 	stream_player = "\"mpv --af=acompressor=10 --quiet\""
-	stream_command = "streamlink --twitch-disable-ads"
+	stream_command = "streamlink --player-passthrough=hls --twitch-disable-ads"
 	stream_quality = "best"
 	stream_chat = True
 
