@@ -88,7 +88,7 @@ if platform.machine()[:3] == "arm":
 	movie_command = "pasuspender -- omxplayer -b -p -o hdmi -n 2"
 	view_command = "fbi"
 	stream_player = "omxplayer --player-fifo"
-	stream_command = "streamlink"
+	stream_command = "streamlink --twitch-disable-ads"
 	stream_quality = "1080p60,best"
 	stream_chat = False
 else:
